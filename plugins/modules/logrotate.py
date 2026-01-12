@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright (c) 2024 [Your Name] <[your_email]>
+# Copyright (c) 2026 Aleksandr Gabidullin <qualittv@gmail.com>
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -8,12 +8,12 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 ---
 module: logrotate_config
-version_added: "1.0.0"
+version_added: 
 short_description: Manage logrotate configurations
 description:
     - Manage logrotate configuration files and settings.
     - Create, update, or remove logrotate configurations for applications and services.
-author: "Your Name (@yourusername)"
+author: "Aleksandr Gabidullin (@a-gabidullin)"
 requirements:
     - logrotate >= 3.8.0
 attributes:
