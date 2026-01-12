@@ -13,7 +13,6 @@ short_description: Manage logrotate configurations
 description:
     - Manage logrotate configuration files and settings.
     - Create, update, or remove logrotate configurations for applications and services.
-    - Can enable/disable existing configurations without modifying content.
 author: "Your Name (@yourusername)"
 requirements:
     - logrotate >= 3.8.0
@@ -77,7 +76,144 @@ options:
             - Compress rotated log files.
         type: bool
         default: true
-    # ... остальные параметры без изменений ...
+    compression_method:
+        description:
+            - Compression method to use.
+            - Requires logrotate 3.18.0 or later for V(xz) and V(zstd).
+        type: str
+        choices: [gzip, bzip2, xz, zstd, lzma, lz4]
+        default: gzip
+    delaycompress:
+        description:
+            - Postpone compression of the previous log file to the next rotation cycle.
+            - Useful for applications that keep writing to the old log file for some time.
+        type: bool
+        default: false
+    missingok:
+        description:
+            - Don't issue an error if the log file is missing.
+        type: bool
+        default: true
+    ifempty:
+        description:
+            - Rotate the log file even if it's empty.
+            - Opposite of V(notifempty).
+        type: bool
+        default: false
+    notifempty:
+        description:
+            - Don't rotate the log file if it's empty.
+            - Opposite of V(ifempty).
+        type: bool
+        default: true
+    create:
+        description:
+            - Create new log file with specified permissions after rotation.
+            - Format: V(mode owner group) (e.g., V(0640 root adm)).
+        type: str
+    copytruncate:
+        description:
+            - Copy the log file and then truncate it in place.
+            - Useful for applications that cannot be told to close their logfile.
+        type: bool
+        default: false
+    size:
+        description:
+            - Rotate log file when it grows bigger than specified size.
+            - Format: V(number)[k|M|G] (e.g., V(100M), V(1G)).
+            - Overrides O(rotation_period) when set.
+        type: str
+    maxsize:
+        description:
+            - Rotate log file when it grows bigger than specified size, but at most once per O(rotation_period).
+            - Format: V(number)[k|M|G] (e.g., V(100M), V(1G)).
+        type: str
+    maxage:
+        description:
+            - Remove rotated logs older than specified number of days.
+        type: int
+    dateext:
+        description:
+            - Use date as extension for rotated files (YYYYMMDD instead of sequential numbers).
+        type: bool
+        default: false
+    dateformat:
+        description:
+            - Format for date extension.
+            - Use with O(dateext=true).
+            - Format specifiers: V(%Y) year, V(%m) month, V(%d) day, V(%s) seconds since epoch.
+        type: str
+        default: -%Y%m%d
+    sharedscripts:
+        description:
+            - Run O(prerotate) and O(postrotate) scripts only once for all matching log files.
+        type: bool
+        default: false
+    prerotate:
+        description:
+            - Commands to execute before rotating the log file.
+            - Can be a single string or list of commands.
+        type: raw
+    postrotate:
+        description:
+            - Commands to execute after rotating the log file.
+            - Can be a single string or list of commands.
+        type: raw
+    firstaction:
+        description:
+            - Commands to execute once before all log files that match the wildcard pattern are rotated.
+        type: raw
+    lastaction:
+        description:
+            - Commands to execute once after all log files that match the wildcard pattern are rotated.
+        type: raw
+    preremove:
+        description:
+            - Commands to execute before removing rotated log files.
+        type: raw
+    su:
+        description:
+            - Set user and group for rotated files.
+            - Format: V(user group) (e.g., V(www-data adm)).
+        type: str
+    olddir:
+        description:
+            - Move rotated logs into specified directory.
+        type: path
+    noolddir:
+        description:
+            - Keep rotated logs in the same directory as the original log.
+        type: bool
+        default: false
+    extension:
+        description:
+            - Extension to use for rotated log files (including dot).
+            - Useful when O(compress=false).
+        type: str
+    mail:
+        description:
+            - Mail logs to specified address when removed.
+        type: str
+    mailfirst:
+        description:
+            - Mail just-created log file, not the about-to-expire one.
+        type: bool
+        default: false
+    maillast:
+        description:
+            - Mail about-to-expire log file (default).
+        type: bool
+        default: true
+    include:
+        description:
+            - Include additional configuration files from specified directory.
+        type: path
+    tabooext:
+        description:
+            - List of extensions that logrotate should not touch.
+            - Default: V(.rpmorig .rpmsave .v .swp .rpmnew .cfsaved .rhn-cfg-tmp-*).
+        type: list
+        elements: str
     enabled:
         description:
             - Whether the configuration should be enabled.
@@ -99,7 +235,128 @@ extends_documentation_fragment:
     - community.general.files
 """
 
-# ... остальная документация без изменений ...
+EXAMPLES = r"""
+- name: Configure log rotation for Nginx
+  community.general.logrotate_config:
+    name: nginx
+    paths:
+      - /var/log/nginx/*.log
+    rotation_period: daily
+    rotate_count: 14
+    compress: true
+    delaycompress: true
+    missingok: true
+    notifempty: true
+    create: 0640 www-data adm
+    sharedscripts: true
+    postrotate:
+      - "[ -f /var/run/nginx.pid ] && kill -USR1 `cat /var/run/nginx.pid`"
+      - "echo 'Nginx logs rotated'"
+
+- name: Configure size-based rotation for application logs
+  community.general.logrotate_config:
+    name: myapp
+    paths:
+      - /var/log/myapp/app.log
+      - /var/log/myapp/debug.log
+    size: 100M
+    rotate_count: 10
+    compress: true
+    dateext: true
+    dateformat: -%Y%m%d.%s
+    missingok: true
+    copytruncate: true
+
+- name: Configure log rotation with custom directory
+  community.general.logrotate_config:
+    name: custom-app
+    config_dir: /etc/custom-logrotate.d
+    paths:
+      - /opt/app/logs/*.log
+    rotation_period: weekly
+    rotate_count: 4
+    olddir: /var/log/archives
+    compress: true
+    compression_method: zstd
+
+- name: Disable logrotate configuration
+  community.general.logrotate_config:
+    name: old-service
+    enabled: false
+
+- name: Remove logrotate configuration
+  community.general.logrotate_config:
+    name: deprecated-app
+    state: absent
+
+- name: Complex configuration with multiple scripts
+  community.general.logrotate_config:
+    name: complex-app
+    paths:
+      - /var/log/complex/*.log
+    rotation_period: monthly
+    rotate_count: 6
+    compress: true
+    delaycompress: false
+    prerotate: |
+      echo "Starting rotation for complex app"
+      systemctl stop complex-app
+    postrotate: |
+      systemctl start complex-app
+      echo "Rotation completed"
+      logger -t logrotate "Complex app logs rotated"
+    firstaction: "echo 'First action: Starting batch rotation'"
+    lastaction: "echo 'Last action: Batch rotation complete'"
+
+- name: User-specific logrotate configuration
+  community.general.logrotate_config:
+    name: myuser-apps
+    config_dir: ~/.logrotate.d
+    paths:
+      - ~/app/*.log
+      - ~/.cache/*/*.log
+    rotation_period: daily
+    rotate_count: 30
+    compress: true
+    su: "{{ ansible_user_id }} users"
+"""
+
+RETURN = r"""
+config_file:
+    description: Path to the created/updated logrotate configuration file.
+    type: str
+    returned: when O(state=present)
+    sample: /etc/logrotate.d/nginx
+config_content:
+    description: The generated logrotate configuration content.
+    type: str
+    returned: when O(state=present)
+    sample: |
+      /var/log/nginx/*.log {
+          daily
+          rotate 14
+          compress
+          delaycompress
+          missingok
+          notifempty
+          create 0640 www-data adm
+          sharedscripts
+          postrotate
+              [ -f /var/run/nginx.pid ] && kill -USR1 `cat /var/run/nginx.pid`
+              echo 'Nginx logs rotated'
+          endscript
+      }
+backup_file:
+    description: Path to the backup file if backup was created.
+    type: str
+    returned: when backup was created
+    sample: /etc/logrotate.d/nginx.backup.20231201
+enabled_state:
+    description: Current enabled state of the configuration.
+    type: bool
+    returned: always
+    sample: true
+"""
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.common.text.converters import to_native
