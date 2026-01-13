@@ -114,6 +114,7 @@ class TestLogrotateConfig(unittest.TestCase):
         default_params.update(params)
         self.mock_module.params = default_params
 
+    # Existing tests remain unchanged...
     def test_create_new_configuration(self):
         """Test creating a new logrotate configuration."""
         # Setup
@@ -449,19 +450,417 @@ class TestLogrotateConfig(unittest.TestCase):
     compress
 }"""
         
+        # Mock file exists
         with patch('os.path.exists', return_value=True) as mock_exists:
 
+            # Мокаем open для чтения существующего контента
             mock_file_read = mock_open(read_data=existing_content)
 
+            # Также мокаем open для записи нового файла
             with patch('builtins.open', mock_file_read), \
                  patch('os.makedirs') as mock_makedirs, \
                  patch('os.remove') as mock_remove, \
                  patch('os.chmod') as mock_chmod:
 
                 config = self.logrotate_module.LogrotateConfig(self.mock_module)
+
+                # Модуль должен успешно распарсить путь из существующего контента и применить конфигурацию
                 result = config.apply()
+
+                # Проверяем, что конфигурация была применена
+                # Когда есть существующая конфигурация, но нет путей в параметрах,
+                # модуль парсит пути из существующей конфигурации и генерирует новую
+                # Поскольку параметры по умолчанию могут отличаться от существующих,
+                # результат должен быть changed=True
                 self.assertTrue(result['changed'])
+                
+                # Проверяем, что в сгенерированном контенте есть путь
+                # В сгенерированном контенте путь должен быть на отдельной строке
                 self.assertIn('/var/log/app1/*.log', result['config_content'])
+
+    # ===========================================================================
+    # НОВЫЕ ТЕСТЫ ДЛЯ ДОБАВЛЕННЫХ ПАРАМЕТРОВ
+    # ===========================================================================
+
+    def test_compressoptions_parameter(self):
+        """Test compressoptions parameter."""
+        # Setup
+        self._setup_module_params(compressoptions="-9")
+        
+        # Mock file operations
+        with patch('os.path.exists', return_value=False) as mock_exists, \
+             patch('os.makedirs') as mock_makedirs, \
+             patch('builtins.open', mock_open()) as mock_file, \
+             patch('os.chmod') as mock_chmod:
+            
+            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            result = config.apply()
+            
+            # Assertions
+            content = result['config_content']
+            self.assertIn('compressoptions -9', content)
+            self.assertTrue(result['changed'])
+
+    def test_nodelaycompress_parameter(self):
+        """Test nodelaycompress parameter."""
+        # Setup
+        self._setup_module_params(nodelaycompress=True)
+        
+        # Mock file operations
+        with patch('os.path.exists', return_value=False) as mock_exists, \
+             patch('os.makedirs') as mock_makedirs, \
+             patch('builtins.open', mock_open()) as mock_file, \
+             patch('os.chmod') as mock_chmod:
+            
+            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            result = config.apply()
+            
+            # Assertions
+            content = result['config_content']
+            self.assertIn('nodelaycompress', content)
+            self.assertTrue(result['changed'])
+
+    def test_shred_and_shredcycles_parameters(self):
+        """Test shred and shredcycles parameters."""
+        # Setup
+        self._setup_module_params(shred=True, shredcycles=3)
+        
+        # Mock file operations
+        with patch('os.path.exists', return_value=False) as mock_exists, \
+             patch('os.makedirs') as mock_makedirs, \
+             patch('builtins.open', mock_open()) as mock_file, \
+             patch('os.chmod') as mock_chmod:
+            
+            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            result = config.apply()
+            
+            # Assertions
+            content = result['config_content']
+            self.assertIn('shred', content)
+            self.assertIn('shredcycles 3', content)
+            self.assertTrue(result['changed'])
+
+    def test_copy_parameter(self):
+        """Test copy parameter."""
+        # Setup
+        self._setup_module_params(copy=True, copytruncate=False)
+        
+        # Mock file operations
+        with patch('os.path.exists', return_value=False) as mock_exists, \
+             patch('os.makedirs') as mock_makedirs, \
+             patch('builtins.open', mock_open()) as mock_file, \
+             patch('os.chmod') as mock_chmod:
+            
+            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            result = config.apply()
+            
+            # Assertions
+            content = result['config_content']
+            self.assertIn('copy', content)
+            self.assertNotIn('copytruncate', content)
+            self.assertTrue(result['changed'])
+
+    def test_renamecopy_parameter(self):
+        """Test renamecopy parameter."""
+        # Setup
+        self._setup_module_params(renamecopy=True)
+        
+        # Mock file operations
+        with patch('os.path.exists', return_value=False) as mock_exists, \
+             patch('os.makedirs') as mock_makedirs, \
+             patch('builtins.open', mock_open()) as mock_file, \
+             patch('os.chmod') as mock_chmod:
+            
+            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            result = config.apply()
+            
+            # Assertions
+            content = result['config_content']
+            self.assertIn('renamecopy', content)
+            self.assertTrue(result['changed'])
+
+    def test_minsize_parameter(self):
+        """Test minsize parameter."""
+        # Setup
+        self._setup_module_params(minsize="100k")
+        
+        # Mock file operations
+        with patch('os.path.exists', return_value=False) as mock_exists, \
+             patch('os.makedirs') as mock_makedirs, \
+             patch('builtins.open', mock_open()) as mock_file, \
+             patch('os.chmod') as mock_chmod:
+            
+            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            result = config.apply()
+            
+            # Assertions
+            content = result['config_content']
+            self.assertIn('minsize 100k', content)
+            self.assertTrue(result['changed'])
+
+    def test_dateyesterday_parameter(self):
+        """Test dateyesterday parameter."""
+        # Setup
+        self._setup_module_params(dateext=True, dateyesterday=True)
+        
+        # Mock file operations
+        with patch('os.path.exists', return_value=False) as mock_exists, \
+             patch('os.makedirs') as mock_makedirs, \
+             patch('builtins.open', mock_open()) as mock_file, \
+             patch('os.chmod') as mock_chmod:
+            
+            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            result = config.apply()
+            
+            # Assertions
+            content = result['config_content']
+            self.assertIn('dateext', content)
+            self.assertIn('dateyesterday', content)
+            self.assertTrue(result['changed'])
+
+    def test_createolddir_parameter(self):
+        """Test createolddir parameter."""
+        # Setup
+        self._setup_module_params(olddir="/var/log/archives", createolddir=True)
+        
+        # Mock file operations
+        with patch('os.path.exists', return_value=False) as mock_exists, \
+             patch('os.makedirs') as mock_makedirs, \
+             patch('builtins.open', mock_open()) as mock_file, \
+             patch('os.chmod') as mock_chmod:
+            
+            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            result = config.apply()
+            
+            # Assertions
+            content = result['config_content']
+            self.assertIn('olddir /var/log/archives', content)
+            self.assertIn('createolddir', content)
+            self.assertTrue(result['changed'])
+
+    def test_start_parameter(self):
+        """Test start parameter."""
+        # Setup
+        self._setup_module_params(start=1)
+        
+        # Mock file operations
+        with patch('os.path.exists', return_value=False) as mock_exists, \
+             patch('os.makedirs') as mock_makedirs, \
+             patch('builtins.open', mock_open()) as mock_file, \
+             patch('os.chmod') as mock_chmod:
+            
+            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            result = config.apply()
+            
+            # Assertions
+            content = result['config_content']
+            self.assertIn('start 1', content)
+            self.assertTrue(result['changed'])
+
+    def test_syslog_parameter(self):
+        """Test syslog parameter."""
+        # Setup
+        self._setup_module_params(syslog=True)
+        
+        # Mock file operations
+        with patch('os.path.exists', return_value=False) as mock_exists, \
+             patch('os.makedirs') as mock_makedirs, \
+             patch('builtins.open', mock_open()) as mock_file, \
+             patch('os.chmod') as mock_chmod:
+            
+            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            result = config.apply()
+            
+            # Assertions
+            content = result['config_content']
+            self.assertIn('syslog', content)
+            self.assertTrue(result['changed'])
+
+    def test_validation_copy_and_copytruncate_exclusive(self):
+        """Test validation when both copy and copytruncate are specified."""
+        # Setup
+        self._setup_module_params(copy=True, copytruncate=True)
+        
+        # Mock file doesn't exist
+        with patch('os.path.exists', return_value=False):
+            
+            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            
+            # Should fail during validation
+            with self.assertRaises(Exception) as context:
+                config.apply()
+            
+            # Verify fail_json was called
+            self.assertIn('fail_json called', str(context.exception))
+
+    def test_validation_copy_and_renamecopy_exclusive(self):
+        """Test validation when both copy and renamecopy are specified."""
+        # Setup
+        self._setup_module_params(copy=True, renamecopy=True)
+        
+        # Mock file doesn't exist
+        with patch('os.path.exists', return_value=False):
+            
+            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            
+            # Should fail during validation
+            with self.assertRaises(Exception) as context:
+                config.apply()
+            
+            # Verify fail_json was called
+            self.assertIn('fail_json called', str(context.exception))
+
+    def test_validation_shredcycles_positive(self):
+        """Test validation when shredcycles is not positive."""
+        # Setup
+        self._setup_module_params(shredcycles=0)
+        
+        # Mock file doesn't exist
+        with patch('os.path.exists', return_value=False):
+            
+            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            
+            # Should fail during validation
+            with self.assertRaises(Exception) as context:
+                config.apply()
+            
+            # Verify fail_json was called
+            self.assertIn('fail_json called', str(context.exception))
+
+    def test_validation_start_non_negative(self):
+        """Test validation when start is negative."""
+        # Setup
+        self._setup_module_params(start=-1)
+        
+        # Mock file doesn't exist
+        with patch('os.path.exists', return_value=False):
+            
+            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            
+            # Should fail during validation
+            with self.assertRaises(Exception) as context:
+                config.apply()
+            
+            # Verify fail_json was called
+            self.assertIn('fail_json called', str(context.exception))
+
+    def test_all_new_parameters_together(self):
+        """Test all new parameters together in one configuration."""
+        # Setup with all new parameters
+        self._setup_module_params(
+            compressoptions="-9",
+            nodelaycompress=True,
+            shred=True,
+            shredcycles=3,
+            copy=True,
+            minsize="100k",
+            dateext=True,
+            dateyesterday=True,
+            olddir="/var/log/archives",
+            createolddir=True,
+            start=1,
+            syslog=True,
+            renamecopy=False,  # copy=True takes precedence
+            copytruncate=False,  # copy=True takes precedence
+            delaycompress=False,  # nodelaycompress=True takes precedence
+        )
+        
+        # Mock file operations
+        with patch('os.path.exists', return_value=False) as mock_exists, \
+             patch('os.makedirs') as mock_makedirs, \
+             patch('builtins.open', mock_open()) as mock_file, \
+             patch('os.chmod') as mock_chmod:
+            
+            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            result = config.apply()
+            
+            # Assertions
+            content = result['config_content']
+            self.assertTrue(result['changed'])
+            
+            # Check all new parameters are present
+            self.assertIn('compressoptions -9', content)
+            self.assertIn('nodelaycompress', content)
+            self.assertIn('shred', content)
+            self.assertIn('shredcycles 3', content)
+            self.assertIn('copy', content)
+            self.assertIn('minsize 100k', content)
+            self.assertIn('dateext', content)
+            self.assertIn('dateyesterday', content)
+            self.assertIn('olddir /var/log/archives', content)
+            self.assertIn('createolddir', content)
+            self.assertIn('start 1', content)
+            self.assertIn('syslog', content)
+            
+            # Check exclusive parameters are not present
+            self.assertNotIn('copytruncate', content)
+            self.assertNotIn('renamecopy', content)
+            self.assertNotIn('delaycompress', content)
+
+    def test_parameter_interactions(self):
+        """Test interactions between related parameters."""
+        # Test 1: nodelaycompress overrides delaycompress
+        self._setup_module_params(delaycompress=True, nodelaycompress=True)
+        
+        with patch('os.path.exists', return_value=False):
+            with patch('builtins.open', mock_open()):
+                config = self.logrotate_module.LogrotateConfig(self.mock_module)
+                
+                # Should fail during validation
+                with self.assertRaises(Exception) as context:
+                    config.apply()
+                
+                self.assertIn('fail_json called', str(context.exception))
+        
+        # Test 2: olddir with noolddir
+        self._setup_module_params(olddir="/var/log/archives", noolddir=True)
+        
+        with patch('os.path.exists', return_value=False):
+            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            
+            # Should fail during validation
+            with self.assertRaises(Exception) as context:
+                config.apply()
+            
+            self.assertIn('fail_json called', str(context.exception))
+
+    def test_size_format_validation(self):
+        """Test validation of size format parameters."""
+        # Valid formats
+        valid_sizes = ["100k", "100M", "1G", "10", "500K", "2M", "3G"]
+        
+        for size in valid_sizes:
+            with self.subTest(valid_size=size):
+                self._setup_module_params(size=size)
+                
+                with patch('os.path.exists', return_value=False), \
+                     patch('builtins.open', mock_open()):
+                    
+                    config = self.logrotate_module.LogrotateConfig(self.mock_module)
+                    
+                    # Should not raise exception for valid formats
+                    try:
+                        result = config.apply()
+                        # If we get here, validation passed
+                        self.assertIn(f'size {size}', result['config_content'])
+                    except Exception as e:
+                        self.fail(f"Valid size format {size} should not fail: {e}")
+        
+        # Invalid formats
+        invalid_sizes = ["100kb", "M100", "1.5G", "abc", "100 MB"]
+        
+        for size in invalid_sizes:
+            with self.subTest(invalid_size=size):
+                self._setup_module_params(size=size)
+                
+                with patch('os.path.exists', return_value=False):
+                    config = self.logrotate_module.LogrotateConfig(self.mock_module)
+                    
+                    # Should fail during validation
+                    with self.assertRaises(Exception) as context:
+                        config.apply()
+                    
+                    self.assertIn('fail_json called', str(context.exception))
 
 
 if __name__ == '__main__':
