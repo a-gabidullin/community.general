@@ -52,7 +52,7 @@ options:
       - Required when creating a new configuration (O(state=present) and config file does not exist).
       - Optional when modifying existing configuration (e.g., to enable/disable).
     type: list
-    elements: str
+    elements: path
   rotation_period:
     description:
       - How often to rotate the logs.
@@ -648,7 +648,7 @@ class LogrotateConfig:
             paths = [paths]
 
         for path in paths:
-            lines.append(os.path.expanduser(os.path.expandvars(path)))
+            lines.append(path)
         lines.append("{")
         lines.append("")
 
@@ -908,7 +908,7 @@ def main() -> None:
             name=dict(type="str", required=True, aliases=["config_name"]),
             state=dict(type="str", default="present", choices=["present", "absent"]),
             config_dir=dict(type="path", default="/etc/logrotate.d"),
-            paths=dict(type="list", elements="str"),
+            paths=dict(type="list", elements="path"),
             rotation_period=dict(
                 type="str",
                 default="daily",
