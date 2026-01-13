@@ -7,7 +7,7 @@ from __future__ import annotations
 import sys
 import os
 import unittest
-from unittest.mock import Mock, patch, mock_open, MagicMock
+from unittest.mock import Mock, patch, mock_open
 import tempfile
 import shutil
 
@@ -22,7 +22,7 @@ class TestLogrotateConfig(unittest.TestCase):
         cls.mock_ansible_basic = Mock()
         cls.mock_ansible_basic.AnsibleModule = Mock()
         cls.mock_converters = Mock()
-        cls.mock_converters.to_native = lambda x: str(x)
+        cls.mock_converters.to_native = str
         cls.patcher_basic = patch.dict('sys.modules', {
             'ansible.module_utils.basic': cls.mock_ansible_basic,
             'ansible.module_utils.common.text.converters': cls.mock_converters
@@ -53,7 +53,6 @@ class TestLogrotateConfig(unittest.TestCase):
         os.makedirs(self.config_dir, exist_ok=True)
         sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-
         for module_name in list(sys.modules.keys()):
             if 'logrotate' in module_name or 'ansible_collections.community.general.plugins.modules' in module_name:
                 del sys.modules[module_name]
@@ -61,7 +60,6 @@ class TestLogrotateConfig(unittest.TestCase):
             from ansible_collections.community.general.plugins.modules import logrotate as logrotate_module
             self.logrotate_module = logrotate_module
         except ImportError:
-
             import logrotate as logrotate_module
             self.logrotate_module = logrotate_module
 
@@ -139,10 +137,12 @@ class TestLogrotateConfig(unittest.TestCase):
         self._setup_module_params(state='absent')
         config_path = os.path.join(self.config_dir, 'test')
         disabled_path = config_path + '.disabled'
+
         def exists_side_effect(path):
             if path == config_path or path == disabled_path:
                 return True
             return False
+
         with patch('os.path.exists', side_effect=exists_side_effect) as mock_exists, \
              patch('os.remove') as mock_remove:
             config = self.logrotate_module.LogrotateConfig(self.mock_module)
@@ -152,22 +152,21 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_disable_configuration(self):
         """Test disabling a logrotate configuration."""
-
         self._setup_module_params(enabled=False)
-
         config_path = os.path.join(self.config_dir, 'test')
         disabled_path = config_path + '.disabled'
-
         existing_content = """/var/log/test/*.log {
     daily
     rotate 7
 }"""
+
         def exists_side_effect(path):
             if path == config_path:
                 return True
             if path == disabled_path:
                 return False
             return False
+
         with patch('os.path.exists', side_effect=exists_side_effect) as mock_exists, \
              patch('builtins.open', mock_open(read_data=existing_content)) as mock_file, \
              patch('os.remove') as mock_remove, \
@@ -197,6 +196,7 @@ class TestLogrotateConfig(unittest.TestCase):
             if path == disabled_path:
                 return True
             return False
+
         with patch('os.path.exists', side_effect=exists_side_effect) as mock_exists, \
              patch('builtins.open', mock_open(read_data=existing_content)) as mock_file, \
              patch('os.remove') as mock_remove, \
@@ -514,7 +514,6 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_all_new_parameters_together(self):
         """Test all new parameters together in one configuration."""
-
         self._setup_module_params(
             compressoptions="-9",
             nodelaycompress=True,
@@ -533,12 +532,10 @@ class TestLogrotateConfig(unittest.TestCase):
             delaycompress=False,
         )
 
-
         with patch('os.path.exists', return_value=False) as mock_exists, \
              patch('os.makedirs') as mock_makedirs, \
              patch('builtins.open', mock_open()) as mock_file, \
              patch('os.chmod') as mock_chmod:
-
             config = self.logrotate_module.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
@@ -557,7 +554,6 @@ class TestLogrotateConfig(unittest.TestCase):
             self.assertIn('start 1', content)
             self.assertIn('syslog', content)
 
-
             lines = [line.strip() for line in content.split('\n')]
             self.assertNotIn('copytruncate', lines)
             self.assertNotIn('renamecopy', lines)
@@ -565,7 +561,6 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_parameter_interactions(self):
         """Test interactions between related parameters."""
-
         self._setup_module_params(delaycompress=True, nodelaycompress=True)
 
         with patch('os.path.exists', return_value=False):
@@ -589,7 +584,6 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_size_format_validation(self):
         """Test validation of size format parameters."""
-
         valid_sizes = ["100k", "100M", "1G", "10", "500K", "2M", "3G"]
 
         for size in valid_sizes:
@@ -601,7 +595,6 @@ class TestLogrotateConfig(unittest.TestCase):
                      patch('builtins.open', mock_open()) as mock_file, \
                      patch('os.chmod') as mock_chmod, \
                      patch('os.remove') as mock_remove:
-
                     config = self.logrotate_module.LogrotateConfig(self.mock_module)
 
                     try:
