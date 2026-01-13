@@ -481,13 +481,12 @@ enabled_state:
   sample: true
 """
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible.module_utils.common.text.converters import to_native
-
 import os
 import re
 from datetime import datetime
-from typing import Dict, Any, Optional
+
+from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.common.text.converters import to_native
 
 
 class LogrotateConfig:
@@ -496,7 +495,7 @@ class LogrotateConfig:
     def __init__(self, module: AnsibleModule) -> None:
         self.module = module
         self.params = module.params
-        self.result: Dict[str, Any] = {
+        self.result: dict[str, object] = {
             "changed": False,
             "config_file": "",
             "config_content": "",
@@ -589,7 +588,7 @@ class LogrotateConfig:
                             msg=f"'{size_param}' must be in format 'number[k|M|G]' (e.g., '100M', '1G')"
                         )
 
-    def _read_existing_config(self, any_state: bool = False) -> Optional[str]:
+    def _read_existing_config(self, any_state: bool = False) -> str | None:
         """Read existing configuration file.
 
         Args:
@@ -786,7 +785,7 @@ class LogrotateConfig:
 
         return "\n".join(lines)
 
-    def _backup_config(self, config_path: str) -> Optional[str]:
+    def _backup_config(self, config_path: str) -> str | None:
         """Create backup of existing configuration."""
         if not os.path.exists(config_path):
             return None
@@ -810,7 +809,7 @@ class LogrotateConfig:
 
         return None
 
-    def apply(self) -> Dict[str, Any]:
+    def apply(self) -> dict[str, object]:
         """Apply logrotate configuration."""
         self._validate_parameters()
         state = self.params["state"]
