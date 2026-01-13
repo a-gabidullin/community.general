@@ -76,12 +76,6 @@ options:
             - Compress rotated log files.
         type: bool
         default: true
-    compressoptions:
-        description:
-            - Options to pass to compression program.
-            - For gzip: V(-9) for best compression, V(-1) for fastest.
-            - For xz: V(-9) for best compression.
-        type: str
     compression_method:
         description:
             - Compression method to use.
@@ -95,23 +89,6 @@ options:
             - Useful for applications that keep writing to the old log file for some time.
         type: bool
         default: false
-    nodelaycompress:
-        description:
-            - Opposite of O(delaycompress). Ensure compression happens immediately.
-            - Note: In logrotate, V(nodelaycompress) is the default behavior.
-        type: bool
-        default: false
-    shred:
-        description:
-            - Use shred to securely delete rotated log files.
-            - Uses V(shred -u) to overwrite files before deleting.
-        type: bool
-        default: false
-    shredcycles:
-        description:
-            - Number of times to overwrite files when using O(shred=true).
-        type: int
-        default: 1
     missingok:
         description:
             - Don't issue an error if the log file is missing.
@@ -133,7 +110,6 @@ options:
         description:
             - Create new log file with specified permissions after rotation.
             - Format: V(mode owner group) (e.g., V(0640 root adm)).
-            - Set to V(null) or omit to use V(nocreate).
         type: str
     copytruncate:
         description:
@@ -141,28 +117,11 @@ options:
             - Useful for applications that cannot be told to close their logfile.
         type: bool
         default: false
-    copy:
-        description:
-            - Copy the log file but do not truncate the original.
-            - Takes precedence over O(rename) and O(copytruncate).
-        type: bool
-        default: false
-    renamecopy:
-        description:
-            - Rename and copy the log file, leaving the original in place.
-        type: bool
-        default: false
     size:
         description:
             - Rotate log file when it grows bigger than specified size.
             - Format: V(number)[k|M|G] (e.g., V(100M), V(1G)).
             - Overrides O(rotation_period) when set.
-        type: str
-    minsize:
-        description:
-            - Rotate log file only if it has grown bigger than specified size.
-            - Format: V(number)[k|M|G] (e.g., V(100M), V(1G)).
-            - Used with time-based rotation to avoid rotating too small files.
         type: str
     maxsize:
         description:
@@ -176,12 +135,6 @@ options:
     dateext:
         description:
             - Use date as extension for rotated files (YYYYMMDD instead of sequential numbers).
-        type: bool
-        default: false
-    dateyesterday:
-        description:
-            - Use yesterday's date for O(dateext) instead of today's date.
-            - Useful for rotating logs that span midnight.
         type: bool
         default: false
     dateformat:
@@ -222,17 +175,11 @@ options:
         description:
             - Set user and group for rotated files.
             - Format: V(user group) (e.g., V(www-data adm)).
-            - Set to V(null) or omit to not set user/group.
         type: str
     olddir:
         description:
             - Move rotated logs into specified directory.
         type: path
-    createolddir:
-        description:
-            - Create O(olddir) directory if it doesn't exist.
-        type: bool
-        default: false
     noolddir:
         description:
             - Keep rotated logs in the same directory as the original log.
@@ -246,7 +193,6 @@ options:
     mail:
         description:
             - Mail logs to specified address when removed.
-            - Set to V(null) or omit to not mail logs.
         type: str
     mailfirst:
         description:
@@ -266,7 +212,6 @@ options:
         description:
             - List of extensions that logrotate should not touch.
             - Default: V(.rpmorig .rpmsave .v .swp .rpmnew .cfsaved .rhn-cfg-tmp-*).
-            - Set to V(null) or empty list to clear defaults.
         type: list
         elements: str
     enabled:
@@ -285,17 +230,6 @@ options:
             - Directory to store backup files.
             - Default is same as O(config_dir) with V(.backup) suffix.
         type: path
-    start:
-        description:
-            - Base number for rotated files.
-            - Example: V(1) gives files .1, .2, etc. instead of .0, .1.
-        type: int
-        default: 0
-    syslog:
-        description:
-            - Send logrotate messages to syslog.
-        type: bool
-        default: false
 extends_documentation_fragment:
     - community.general.attributes
     - community.general.files
@@ -310,7 +244,6 @@ EXAMPLES = r"""
     rotation_period: daily
     rotate_count: 14
     compress: true
-    compressoptions: "-9"
     delaycompress: true
     missingok: true
     notifempty: true
@@ -329,44 +262,20 @@ EXAMPLES = r"""
     size: 100M
     rotate_count: 10
     compress: true
-    compressoptions: "-1"
     dateext: true
-    dateyesterday: true
     dateformat: -%Y%m%d.%s
     missingok: true
     copytruncate: true
 
-- name: Configure log rotation with secure deletion
+- name: Configure log rotation with custom directory
   community.general.logrotate_config:
-    name: secure-app
-    paths:
-      - /var/log/secure-app/*.log
-    rotation_period: weekly
-    rotate_count: 4
-    shred: true
-    shredcycles: 3
-    compress: true
-    compressoptions: "-9"
-
-- name: Configure log rotation with custom start number
-  community.general.logrotate_config:
-    name: custom-start
-    paths:
-      - /var/log/custom/*.log
-    rotation_period: monthly
-    rotate_count: 6
-    start: 1
-    compress: true
-
-- name: Configure log rotation with old directory
-  community.general.logrotate_config:
-    name: with-olddir
+    name: custom-app
+    config_dir: /etc/custom-logrotate.d
     paths:
       - /opt/app/logs/*.log
     rotation_period: weekly
     rotate_count: 4
     olddir: /var/log/archives
-    createolddir: true
     compress: true
     compression_method: zstd
 
@@ -410,43 +319,6 @@ EXAMPLES = r"""
     rotate_count: 30
     compress: true
     su: "{{ ansible_user_id }} users"
-
-- name: Configuration with copy instead of move
-  community.general.logrotate_config:
-    name: copy-config
-    paths:
-      - /var/log/copy-app/*.log
-    rotation_period: daily
-    rotate_count: 7
-    copy: true
-
-- name: Configuration with syslog notifications
-  community.general.logrotate_config:
-    name: syslog-config
-    paths:
-      - /var/log/syslog-app/*.log
-    rotation_period: daily
-    rotate_count: 14
-    syslog: true
-    compress: true
-
-- name: Configuration without compression
-  community.general.logrotate_config:
-    name: nocompress-config
-    paths:
-      - /var/log/nocompress/*.log
-    rotation_period: daily
-    rotate_count: 7
-    compress: false
-
-- name: Configuration with custom taboo extensions
-  community.general.logrotate_config:
-    name: taboo-config
-    paths:
-      - /var/log/taboo/*.log
-    rotation_period: daily
-    rotate_count: 7
-    tabooext: [".backup", ".tmp", ".temp"]
 """
 
 RETURN = r"""
@@ -464,7 +336,6 @@ config_content:
           daily
           rotate 14
           compress
-          compressoptions -9
           delaycompress
           missingok
           notifempty
@@ -492,8 +363,9 @@ from ansible.module_utils.common.text.converters import to_native
 
 import os
 import re
+from pathlib import Path
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Union
 
 
 class LogrotateConfig:
@@ -544,35 +416,10 @@ class LogrotateConfig:
                     msg="'paths' parameter is required when creating a new configuration"
                 )
             
-            # Validate mutual exclusions
+            # Validate other parameters if provided
             if self.params.get("size") and self.params.get("maxsize"):
                 self.module.fail_json(
                     msg="'size' and 'maxsize' parameters are mutually exclusive"
-                )
-
-            if self.params.get("copy") and self.params.get("copytruncate"):
-                self.module.fail_json(
-                    msg="'copy' and 'copytruncate' are mutually exclusive"
-                )
-
-            if self.params.get("copy") and self.params.get("renamecopy"):
-                self.module.fail_json(
-                    msg="'copy' and 'renamecopy' are mutually exclusive"
-                )
-
-            if self.params.get("ifempty") and self.params.get("notifempty"):
-                self.module.fail_json(
-                    msg="'ifempty' and 'notifempty' are mutually exclusive"
-                )
-
-            if self.params.get("delaycompress") and self.params.get("nodelaycompress"):
-                self.module.fail_json(
-                    msg="'delaycompress' and 'nodelaycompress' are mutually exclusive"
-                )
-
-            if self.params.get("olddir") and self.params.get("noolddir"):
-                self.module.fail_json(
-                    msg="'olddir' and 'noolddir' are mutually exclusive"
                 )
 
             # Validate compression method
@@ -589,26 +436,6 @@ class LogrotateConfig:
                     self.module.fail_json(
                         msg="'su' parameter must be in format 'user group'"
                     )
-
-            # Validate shredcycles
-            if self.params.get("shredcycles", 1) < 1:
-                self.module.fail_json(
-                    msg="'shredcycles' must be a positive integer"
-                )
-
-            # Validate start
-            if self.params.get("start", 0) < 0:
-                self.module.fail_json(
-                    msg="'start' must be a non-negative integer"
-                )
-
-            # Validate size formats
-            for size_param in ["size", "minsize", "maxsize"]:
-                if self.params.get(size_param):
-                    if not re.match(r'^\d+[kMG]?$', self.params[size_param], re.I):
-                        self.module.fail_json(
-                            msg=f"'{size_param}' must be in format 'number[k|M|G]' (e.g., '100M', '1G')"
-                        )
 
     def _read_existing_config(self, any_state: bool = False) -> Optional[str]:
         """Read existing configuration file.
@@ -691,107 +518,60 @@ class LogrotateConfig:
         elif self.params.get("maxsize"):
             lines.append(f"    maxsize {self.params['maxsize']}")
 
-        # Add minsize if specified
-        if self.params.get("minsize"):
-            lines.append(f"    minsize {self.params['minsize']}")
-
         # Add basic options
         lines.append(f"    rotate {self.params['rotate_count']}")
 
-        # Add start if not default
-        if self.params.get("start", 0) != 0:
-            lines.append(f"    start {self.params['start']}")
-
-        # Compression options
         if self.params["compress"]:
             comp_method = self.params.get("compression_method", "gzip")
             if comp_method != "gzip":
                 lines.append(f"    compresscmd /usr/bin/{comp_method}")
-                # Handle special cases for uncompression commands
-                if comp_method == "zstd":
-                    lines.append(f"    uncompresscmd /usr/bin/{comp_method} -d")
-                elif comp_method == "lz4":
-                    lines.append(f"    uncompresscmd /usr/bin/{comp_method} -d")
-                else:
-                    lines.append(f"    uncompresscmd /usr/bin/{comp_method}un{comp_method}")
+                lines.append(f"    uncompresscmd /usr/bin/{comp_method}un{comp_method}")
                 lines.append(f"    compressext .{comp_method}")
             lines.append("    compress")
-            
-            # Add compressoptions if specified
-            if self.params.get("compressoptions"):
-                lines.append(f"    compressoptions {self.params['compressoptions']}")
         else:
             lines.append("    nocompress")
 
-        # Delaycompress / nodelaycompress
         if self.params["delaycompress"]:
             lines.append("    delaycompress")
-        elif self.params.get("nodelaycompress"):
-            lines.append("    nodelaycompress")
 
-        # Shred options
-        if self.params.get("shred"):
-            lines.append("    shred")
-            if self.params.get("shredcycles", 1) > 1:
-                lines.append(f"    shredcycles {self.params['shredcycles']}")
-
-        # Missingok (true by default)
-        if not self.params["missingok"]:
-            lines.append("    nomissingok")
-        else:
+        if self.params["missingok"]:
             lines.append("    missingok")
+        else:
+            lines.append("    nomissingok")
 
-        # Ifempty / notifempty
-        if self.params.get("ifempty"):
+        if self.params["ifempty"]:
             lines.append("    ifempty")
-        elif self.params.get("notifempty"):
+        elif self.params["notifempty"]:
             lines.append("    notifempty")
 
-        # Create (nocreate is implied when create is not specified)
         if self.params.get("create"):
             lines.append(f"    create {self.params['create']}")
 
-        # Copy options
-        if self.params.get("copy"):
-            lines.append("    copy")
-        elif self.params.get("renamecopy"):
-            lines.append("    renamecopy")
-        elif self.params.get("copytruncate"):
+        if self.params["copytruncate"]:
             lines.append("    copytruncate")
 
-        # Maxage
         if self.params.get("maxage"):
             lines.append(f"    maxage {self.params['maxage']}")
 
-        # Date options
         if self.params["dateext"]:
             lines.append("    dateext")
-            if self.params.get("dateyesterday"):
-                lines.append("    dateyesterday")
             if self.params.get("dateformat"):
                 lines.append(f"    dateformat {self.params['dateformat']}")
 
-        # Sharedscripts
-        if self.params.get("sharedscripts"):
+        if self.params["sharedscripts"]:
             lines.append("    sharedscripts")
 
-        # su (nosu is implied when su is not specified)
         if self.params.get("su"):
             lines.append(f"    su {self.params['su']}")
 
-        # Olddir options
-        if self.params.get("noolddir"):
-            lines.append("    noolddir")
-        elif self.params.get("olddir"):
+        if self.params.get("olddir"):
             lines.append(f"    olddir {self._expand_path(self.params['olddir'])}")
-            if self.params.get("createolddir"):
-                lines.append("    createolddir")
+        elif self.params.get("noolddir"):
+            lines.append("    noolddir")
 
-        # Extension
         if self.params.get("extension"):
             lines.append(f"    extension {self.params['extension']}")
 
-        # Mail options (nomail is implied when mail is not specified)
         if self.params.get("mail"):
             lines.append(f"    mail {self.params['mail']}")
             if self.params.get("mailfirst"):
@@ -799,21 +579,14 @@ class LogrotateConfig:
             elif self.params.get("maillast"):
                 lines.append("    maillast")
 
-        # Include
         if self.params.get("include"):
             lines.append(f"    include {self._expand_path(self.params['include'])}")
 
-        # Tabooext (notabooext is implied when tabooext is null/empty)
         if self.params.get("tabooext"):
             tabooext = self.params["tabooext"]
             if isinstance(tabooext, list):
                 tabooext = " ".join(tabooext)
-            if tabooext.strip():
-                lines.append(f"    tabooext {tabooext}")
-
-        # Syslog (nosyslog is implied when syslog is false)
-        if self.params.get("syslog"):
-            lines.append("    syslog")
+            lines.append(f"    tabooext {tabooext}")
 
         # Add scripts
         scripts = {
@@ -986,29 +759,21 @@ def main() -> None:
             ),
             rotate_count=dict(type="int", default=7),
             compress=dict(type="bool", default=True),
-            compressoptions=dict(type="str"),
             compression_method=dict(
                 type="str",
                 default="gzip",
                 choices=["gzip", "bzip2", "xz", "zstd", "lzma", "lz4"],
             ),
             delaycompress=dict(type="bool", default=False),
-            nodelaycompress=dict(type="bool", default=False),
-            shred=dict(type="bool", default=False),
-            shredcycles=dict(type="int", default=1),
             missingok=dict(type="bool", default=True),
             ifempty=dict(type="bool", default=False),
             notifempty=dict(type="bool", default=True),
             create=dict(type="str"),
             copytruncate=dict(type="bool", default=False),
-            copy=dict(type="bool", default=False),
-            renamecopy=dict(type="bool", default=False),
             size=dict(type="str"),
-            minsize=dict(type="str"),
             maxsize=dict(type="str"),
             maxage=dict(type="int"),
             dateext=dict(type="bool", default=False),
-            dateyesterday=dict(type="bool", default=False),
             dateformat=dict(type="str", default="- %Y%m%d"),
             sharedscripts=dict(type="bool", default=False),
             prerotate=dict(type="raw"),
@@ -1018,7 +783,6 @@ def main() -> None:
             preremove=dict(type="raw"),
             su=dict(type="str"),
             olddir=dict(type="path"),
-            createolddir=dict(type="bool", default=False),
             noolddir=dict(type="bool", default=False),
             extension=dict(type="str"),
             mail=dict(type="str"),
@@ -1029,8 +793,6 @@ def main() -> None:
             enabled=dict(type="bool", default=True),
             backup=dict(type="bool", default=False),
             backup_dir=dict(type="path"),
-            start=dict(type="int", default=0),
-            syslog=dict(type="bool", default=False),
         ),
         supports_check_mode=True,
     )

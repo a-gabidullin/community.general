@@ -449,32 +449,18 @@ class TestLogrotateConfig(unittest.TestCase):
     compress
 }"""
         
-        # Mock file exists
         with patch('os.path.exists', return_value=True) as mock_exists:
 
-            # Мокаем open для чтения существующего контента
             mock_file_read = mock_open(read_data=existing_content)
 
-            # Также мокаем open для записи нового файла
             with patch('builtins.open', mock_file_read), \
                  patch('os.makedirs') as mock_makedirs, \
                  patch('os.remove') as mock_remove, \
                  patch('os.chmod') as mock_chmod:
 
                 config = self.logrotate_module.LogrotateConfig(self.mock_module)
-
-                # Модуль должен успешно распарсить путь из существующего контента и применить конфигурацию
                 result = config.apply()
-
-                # Проверяем, что конфигурация была применена
-                # Когда есть существующая конфигурация, но нет путей в параметрах,
-                # модуль парсит пути из существующей конфигурации и генерирует новую
-                # Поскольку параметры по умолчанию могут отличаться от существующих,
-                # результат должен быть changed=True
                 self.assertTrue(result['changed'])
-                
-                # Проверяем, что в сгенерированном контенте есть путь
-                # В сгенерированном контенте путь должен быть на отдельной строке
                 self.assertIn('/var/log/app1/*.log', result['config_content'])
 
 
