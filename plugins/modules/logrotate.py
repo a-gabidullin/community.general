@@ -6,8 +6,8 @@
 from __future__ import annotations
 
 DOCUMENTATION = r"""
-module: logrotate_config
-version_added:
+module: logrotate
+version_added: 12.3.0
 short_description: Manage logrotate configurations
 description:
   - Manage logrotate configuration files and settings.
@@ -139,7 +139,7 @@ options:
   copy:
     description:
       - Copy the log file but do not truncate the original.
-      - Takes precedence over O(rename) and O(copytruncate).
+      - Takes precedence over O(renamecopy) and O(copytruncate).
     type: bool
     default: false
   renamecopy:
@@ -293,12 +293,11 @@ options:
     default: false
 extends_documentation_fragment:
   - community.general.attributes
-  - community.general.files
 """
 
 EXAMPLES = r"""
 - name: Configure log rotation for Nginx
-  community.general.logrotate_config:
+  community.general.logrotate:
     name: nginx
     paths:
       - /var/log/nginx/*.log
@@ -309,14 +308,14 @@ EXAMPLES = r"""
     delaycompress: true
     missingok: true
     notifempty: true
-    create: 0640 www-data adm
+    create: "0640 www-data adm"
     sharedscripts: true
     postrotate:
       - "[ -f /var/run/nginx.pid ] && kill -USR1 $(cat /var/run/nginx.pid)"
       - "echo 'Nginx logs rotated'"
 
 - name: Configure size-based rotation for application logs
-  community.general.logrotate_config:
+  community.general.logrotate:
     name: myapp
     paths:
       - /var/log/myapp/app.log
@@ -332,7 +331,7 @@ EXAMPLES = r"""
     copytruncate: true
 
 - name: Configure log rotation with secure deletion
-  community.general.logrotate_config:
+  community.general.logrotate:
     name: secure-app
     paths:
       - /var/log/secure-app/*.log
@@ -344,7 +343,7 @@ EXAMPLES = r"""
     compressoptions: "-9"
 
 - name: Configure log rotation with custom start number
-  community.general.logrotate_config:
+  community.general.logrotate:
     name: custom-start
     paths:
       - /var/log/custom/*.log
@@ -354,7 +353,7 @@ EXAMPLES = r"""
     compress: true
 
 - name: Configure log rotation with old directory
-  community.general.logrotate_config:
+  community.general.logrotate:
     name: with-olddir
     paths:
       - /opt/app/logs/*.log
@@ -366,17 +365,17 @@ EXAMPLES = r"""
     compression_method: zstd
 
 - name: Disable logrotate configuration
-  community.general.logrotate_config:
+  community.general.logrotate:
     name: old-service
     enabled: false
 
 - name: Remove logrotate configuration
-  community.general.logrotate_config:
+  community.general.logrotate:
     name: deprecated-app
     state: absent
 
 - name: Complex configuration with multiple scripts
-  community.general.logrotate_config:
+  community.general.logrotate:
     name: complex-app
     paths:
       - /var/log/complex/*.log
@@ -395,7 +394,7 @@ EXAMPLES = r"""
     lastaction: "echo 'Last action: Batch rotation complete'"
 
 - name: User-specific logrotate configuration
-  community.general.logrotate_config:
+  community.general.logrotate:
     name: myuser-apps
     config_dir: ~/.logrotate.d
     paths:
@@ -407,7 +406,7 @@ EXAMPLES = r"""
     su: "{{ ansible_user_id }} users"
 
 - name: Configuration with copy instead of move
-  community.general.logrotate_config:
+  community.general.logrotate:
     name: copy-config
     paths:
       - /var/log/copy-app/*.log
@@ -416,7 +415,7 @@ EXAMPLES = r"""
     copy: true
 
 - name: Configuration with syslog notifications
-  community.general.logrotate_config:
+  community.general.logrotate:
     name: syslog-config
     paths:
       - /var/log/syslog-app/*.log
@@ -426,7 +425,7 @@ EXAMPLES = r"""
     compress: true
 
 - name: Configuration without compression
-  community.general.logrotate_config:
+  community.general.logrotate:
     name: nocompress-config
     paths:
       - /var/log/nocompress/*.log
@@ -435,7 +434,7 @@ EXAMPLES = r"""
     compress: false
 
 - name: Configuration with custom taboo extensions
-  community.general.logrotate_config:
+  community.general.logrotate:
     name: taboo-config
     paths:
       - /var/log/taboo/*.log
@@ -944,7 +943,7 @@ def main() -> None:
             maxage=dict(type="int"),
             dateext=dict(type="bool", default=False),
             dateyesterday=dict(type="bool", default=False),
-            dateformat=dict(type="str", default="- %Y%m%d"),
+            dateformat=dict(type="str", default="-%Y%m%d"),
             sharedscripts=dict(type="bool", default=False),
             prerotate=dict(type="raw"),
             postrotate=dict(type="raw"),
