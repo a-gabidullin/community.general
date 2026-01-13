@@ -218,7 +218,7 @@ options:
       - Set user and group for rotated files.
       - Format is V(user group) (e.g., V(www-data adm)).
       - Set to V(null) or omit to not set user/group.
-    type: path
+    type: str
   olddir:
     description:
       - Move rotated logs into specified directory.
@@ -950,7 +950,7 @@ def main() -> None:
             firstaction=dict(type="raw"),
             lastaction=dict(type="raw"),
             preremove=dict(type="raw"),
-            su=dict(type="path"),
+            su=dict(type="str"),
             olddir=dict(type="path"),
             createolddir=dict(type="bool", default=False),
             noolddir=dict(type="bool", default=False),
