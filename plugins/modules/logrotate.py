@@ -218,7 +218,7 @@ options:
       - Set user and group for rotated files.
       - Format is V(user group) (e.g., V(www-data adm)).
       - Set to V(null) or omit to not set user/group.
-    type: str
+    type: path
   olddir:
     description:
       - Move rotated logs into specified directory.
@@ -487,7 +487,7 @@ from ansible.module_utils.common.text.converters import to_native
 import os
 import re
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 
 
 class LogrotateConfig:
@@ -856,7 +856,7 @@ class LogrotateConfig:
                 try:
                     with open(new_path, "r") as f:
                         self.result["config_content"] = f.read()
-                except:
+                except Exception:
                     self.result["config_content"] = existing_content
 
                 return self.result
@@ -950,7 +950,7 @@ def main() -> None:
             firstaction=dict(type="raw"),
             lastaction=dict(type="raw"),
             preremove=dict(type="raw"),
-            su=dict(type="str"),
+            su=dict(type="path"),
             olddir=dict(type="path"),
             createolddir=dict(type="bool", default=False),
             noolddir=dict(type="bool", default=False),
