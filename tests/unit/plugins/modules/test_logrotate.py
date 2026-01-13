@@ -114,7 +114,6 @@ class TestLogrotateConfig(unittest.TestCase):
         default_params.update(params)
         self.mock_module.params = default_params
 
-    # Existing tests remain unchanged...
     def test_create_new_configuration(self):
         """Test creating a new logrotate configuration."""
         # Setup
@@ -793,9 +792,11 @@ class TestLogrotateConfig(unittest.TestCase):
             self.assertIn('syslog', content)
             
             # Check exclusive parameters are not present
-            self.assertNotIn('copytruncate', content)
-            self.assertNotIn('renamecopy', content)
-            self.assertNotIn('delaycompress', content)
+            # Исправление: проверяем отдельные строки, а не подстроки
+            lines = [line.strip() for line in content.split('\n')]
+            self.assertNotIn('copytruncate', lines)
+            self.assertNotIn('renamecopy', lines)
+            self.assertNotIn('delaycompress', lines)  # Теперь проверяем в списке строк
 
     def test_parameter_interactions(self):
         """Test interactions between related parameters."""
@@ -833,8 +834,12 @@ class TestLogrotateConfig(unittest.TestCase):
             with self.subTest(valid_size=size):
                 self._setup_module_params(size=size)
                 
-                with patch('os.path.exists', return_value=False), \
-                     patch('builtins.open', mock_open()):
+                # Mock ALL file operations including os.chmod and os.makedirs
+                with patch('os.path.exists', return_value=False) as mock_exists, \
+                     patch('os.makedirs') as mock_makedirs, \
+                     patch('builtins.open', mock_open()) as mock_file, \
+                     patch('os.chmod') as mock_chmod, \
+                     patch('os.remove') as mock_remove:
                     
                     config = self.logrotate_module.LogrotateConfig(self.mock_module)
                     
