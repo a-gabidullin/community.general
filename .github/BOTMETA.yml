@@ -1507,7 +1507,7 @@ files:
   $modules/sssd_info.py:
     maintainers: a-gabidullin
   $modules/logrotate.py:
-    maintainers: a-gabidullin  
+    maintainers: a-gabidullin
   #########################
   docs/docsite/rst/filter_guide.rst: {}
   docs/docsite/rst/filter_guide_abstract_informations.rst: {}
