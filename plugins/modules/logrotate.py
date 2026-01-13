@@ -218,7 +218,7 @@ options:
       - Set user and group for rotated files.
       - Format is V(user group) (e.g., V(www-data adm)).
       - Set to V(null) or omit to not set user/group.
-    type: path
+    type: str
   olddir:
     description:
       - Move rotated logs into specified directory.
@@ -503,7 +503,7 @@ class LogrotateConfig:
             "enabled_state": True,
         }
 
-        self.config_dir = self._expand_path(self.params["config_dir"])
+        self.config_dir = self.params["config_dir"]
         self.config_name = self.params["name"]
         self.disabled_suffix = ".disabled"
 
@@ -511,10 +511,6 @@ class LogrotateConfig:
 
         if not os.path.exists(self.config_dir):
             os.makedirs(self.config_dir, mode=0o755, exist_ok=True)
-
-    def _expand_path(self, path: str) -> str:
-        """Expand user and variables in path."""
-        return os.path.expanduser(os.path.expandvars(path))
 
     def _get_config_path(self, enabled: bool) -> str:
         """Get config file path based on enabled state."""
@@ -652,7 +648,7 @@ class LogrotateConfig:
             paths = [paths]
 
         for path in paths:
-            lines.append(self._expand_path(path))
+            lines.append(os.path.expanduser(os.path.expandvars(path)))
         lines.append("{")
         lines.append("")
 
@@ -739,7 +735,7 @@ class LogrotateConfig:
         if self.params.get("noolddir"):
             lines.append("    noolddir")
         elif self.params.get("olddir"):
-            lines.append(f"    olddir {self._expand_path(self.params['olddir'])}")
+            lines.append(f"    olddir {self.params['olddir']}")
             if self.params.get("createolddir"):
                 lines.append("    createolddir")
 
@@ -754,7 +750,7 @@ class LogrotateConfig:
                 lines.append("    maillast")
 
         if self.params.get("include"):
-            lines.append(f"    include {self._expand_path(self.params['include'])}")
+            lines.append(f"    include {self.params['include']}")
 
         if self.params.get("tabooext"):
             tabooext = self.params["tabooext"]
@@ -950,7 +946,7 @@ def main() -> None:
             firstaction=dict(type="raw"),
             lastaction=dict(type="raw"),
             preremove=dict(type="raw"),
-            su=dict(type="path"),
+            su=dict(type="str"),
             olddir=dict(type="path"),
             createolddir=dict(type="bool", default=False),
             noolddir=dict(type="bool", default=False),
