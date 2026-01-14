@@ -56,9 +56,10 @@ options:
   rotation_period:
     description:
       - How often to rotate the logs.
+      - If not specified, existing value will be preserved when modifying configuration.
+      - When creating new configuration, logrotate default (daily) will be used if not specified.
     type: str
     choices: [daily, weekly, monthly, yearly]
-    default: daily
   rotate_count:
     description:
       - Number of rotated log files to keep.
@@ -544,10 +545,6 @@ class LogrotateConfig:
             if self.params.get("olddir") and self.params.get("noolddir"):
                 self.module.fail_json(msg="'olddir' and 'noolddir' are mutually exclusive")
 
-            comp_method = self.params.get("compression_method", "gzip")
-            if comp_method not in ["gzip", "bzip2", "xz", "zstd", "lzma", "lz4"]:
-                self.module.fail_json(msg=f"Invalid compression method: {comp_method}")
-
             if self.params.get("su"):
                 su_parts = self.params["su"].split()
                 if len(su_parts) != 2:
@@ -636,8 +633,9 @@ class LogrotateConfig:
         lines.append("{")
         lines.append("")
 
-        if not self.params.get("size") and not self.params.get("maxsize"):
-            lines.append(f"    {self.params['rotation_period']}")
+        rotation_period = self.params.get("rotation_period")
+        if rotation_period and not self.params.get("size") and not self.params.get("maxsize"):
+            lines.append(f"    {rotation_period}")
 
         if self.params.get("size"):
             lines.append(f"    size {self.params['size']}")
@@ -653,7 +651,7 @@ class LogrotateConfig:
             lines.append(f"    start {self.params['start']}")
 
         if self.params["compress"]:
-            comp_method = self.params.get("compression_method", "gzip")
+            comp_method = self.params["compression_method"]
             if comp_method != "gzip":
                 lines.append(f"    compresscmd /usr/bin/{comp_method}")
                 if comp_method == "zstd":
@@ -886,7 +884,6 @@ def main() -> None:
             paths=dict(type="list", elements="path"),
             rotation_period=dict(
                 type="str",
-                default="daily",
                 choices=["daily", "weekly", "monthly", "yearly"],
             ),
             rotate_count=dict(type="int", default=7),
