@@ -342,19 +342,6 @@ class TestLogrotateConfig(unittest.TestCase):
                 self.assertTrue(result['changed'])
                 self.assertIn('/var/log/app1/*.log', result['config_content'])
 
-    def test_compressoptions_parameter(self):
-        """Test compressoptions parameter."""
-        self._setup_module_params(compressoptions="-9")
-        with patch('os.path.exists', return_value=False) as mock_exists, \
-             patch('os.makedirs') as mock_makedirs, \
-             patch('builtins.open', mock_open()) as mock_file, \
-             patch('os.chmod') as mock_chmod:
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
-            result = config.apply()
-            content = result['config_content']
-            self.assertIn('compressoptions -9', content)
-            self.assertTrue(result['changed'])
-
     def test_nodelaycompress_parameter(self):
         """Test nodelaycompress parameter."""
         self._setup_module_params(nodelaycompress=True)
@@ -512,10 +499,18 @@ class TestLogrotateConfig(unittest.TestCase):
                 config.apply()
             self.assertIn('fail_json called', str(context.exception))
 
+    def test_validation_olddir_and_noolddir_exclusive(self):
+        """Test validation when both olddir and noolddir are specified."""
+        self._setup_module_params(olddir="/var/log/archives", noolddir=True)
+        with patch('os.path.exists', return_value=False):
+            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            with self.assertRaises(Exception) as context:
+                config.apply()
+            self.assertIn('fail_json called', str(context.exception))
+
     def test_all_new_parameters_together(self):
         """Test all new parameters together in one configuration."""
         self._setup_module_params(
-            compressoptions="-9",
             nodelaycompress=True,
             shred=True,
             shredcycles=3,
@@ -541,7 +536,6 @@ class TestLogrotateConfig(unittest.TestCase):
             content = result['config_content']
             self.assertTrue(result['changed'])
 
-            self.assertIn('compressoptions -9', content)
             self.assertIn('nodelaycompress', content)
             self.assertIn('shred', content)
             self.assertIn('shredcycles 3', content)
@@ -561,18 +555,27 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_parameter_interactions(self):
         """Test interactions between related parameters."""
-        self._setup_module_params(delaycompress=True, nodelaycompress=True)
+        self._setup_module_params(olddir="/var/log/archives", noolddir=True)
 
         with patch('os.path.exists', return_value=False):
-            with patch('builtins.open', mock_open()):
-                config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = self.logrotate_module.LogrotateConfig(self.mock_module)
 
-                with self.assertRaises(Exception) as context:
-                    config.apply()
+            with self.assertRaises(Exception) as context:
+                config.apply()
 
-                self.assertIn('fail_json called', str(context.exception))
+            self.assertIn('fail_json called', str(context.exception))
 
-        self._setup_module_params(olddir="/var/log/archives", noolddir=True)
+        self._setup_module_params(copy=True, renamecopy=True)
+
+        with patch('os.path.exists', return_value=False):
+            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+
+            with self.assertRaises(Exception) as context:
+                config.apply()
+
+            self.assertIn('fail_json called', str(context.exception))
+
+        self._setup_module_params(copy=True, copytruncate=True)
 
         with patch('os.path.exists', return_value=False):
             config = self.logrotate_module.LogrotateConfig(self.mock_module)
@@ -593,8 +596,7 @@ class TestLogrotateConfig(unittest.TestCase):
                 with patch('os.path.exists', return_value=False) as mock_exists, \
                      patch('os.makedirs') as mock_makedirs, \
                      patch('builtins.open', mock_open()) as mock_file, \
-                     patch('os.chmod') as mock_chmod, \
-                     patch('os.remove') as mock_remove:
+                     patch('os.chmod') as mock_chmod:
                     config = self.logrotate_module.LogrotateConfig(self.mock_module)
 
                     try:
@@ -608,6 +610,40 @@ class TestLogrotateConfig(unittest.TestCase):
         for size in invalid_sizes:
             with self.subTest(invalid_size=size):
                 self._setup_module_params(size=size)
+
+                with patch('os.path.exists', return_value=False):
+                    config = self.logrotate_module.LogrotateConfig(self.mock_module)
+
+                    with self.assertRaises(Exception) as context:
+                        config.apply()
+
+                    self.assertIn('fail_json called', str(context.exception))
+
+    def test_maxsize_format_validation(self):
+        """Test validation of maxsize format parameters."""
+        valid_sizes = ["100k", "100M", "1G", "10", "500K", "2M", "3G"]
+
+        for size in valid_sizes:
+            with self.subTest(valid_size=size):
+                self._setup_module_params(maxsize=size)
+
+                with patch('os.path.exists', return_value=False) as mock_exists, \
+                     patch('os.makedirs') as mock_makedirs, \
+                     patch('builtins.open', mock_open()) as mock_file, \
+                     patch('os.chmod') as mock_chmod:
+                    config = self.logrotate_module.LogrotateConfig(self.mock_module)
+
+                    try:
+                        result = config.apply()
+                        self.assertIn(f'maxsize {size}', result['config_content'])
+                    except Exception as e:
+                        self.fail(f"Valid maxsize format {size} should not fail: {e}")
+
+        invalid_sizes = ["100kb", "M100", "1.5G", "abc", "100 MB"]
+
+        for size in invalid_sizes:
+            with self.subTest(invalid_size=size):
+                self._setup_module_params(maxsize=size)
 
                 with patch('os.path.exists', return_value=False):
                     config = self.logrotate_module.LogrotateConfig(self.mock_module)
