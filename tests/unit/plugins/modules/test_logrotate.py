@@ -96,8 +96,8 @@ class TestLogrotateConfig(unittest.TestCase):
     def test_create_new_configuration(self):
         """Test creating a new logrotate configuration."""
         self._setup_module_params()
-        with patch('os.path.exists', return_value=False) as mock_exists, \
-             patch('os.makedirs') as mock_makedirs, \
+        with patch('os.path.exists', return_value=False), \
+             patch('os.makedirs'), \
              patch('builtins.open', mock_open()) as mock_file, \
              patch('os.chmod') as mock_chmod:
             config = self.logrotate_module.LogrotateConfig(self.mock_module)
@@ -135,10 +135,9 @@ class TestLogrotateConfig(unittest.TestCase):
         """Test removing a logrotate configuration."""
         self._setup_module_params(state='absent')
         config_path = os.path.join(self.config_dir, 'test')
-        disabled_path = config_path + '.disabled'
 
         def exists_side_effect(path):
-            return path in (config_path, disabled_path)
+            return path in (config_path, config_path + '.disabled')
 
         with patch('os.path.exists', side_effect=exists_side_effect), \
              patch('os.remove') as mock_remove:
@@ -151,7 +150,6 @@ class TestLogrotateConfig(unittest.TestCase):
         """Test disabling a logrotate configuration."""
         self._setup_module_params(enabled=False)
         config_path = os.path.join(self.config_dir, 'test')
-        disabled_path = config_path + '.disabled'
         existing_content = """/var/log/test/*.log {
     daily
     rotate 7
@@ -177,14 +175,13 @@ class TestLogrotateConfig(unittest.TestCase):
         """Test enabling a disabled logrotate configuration."""
         self._setup_module_params(enabled=True)
         config_path = os.path.join(self.config_dir, 'test')
-        disabled_path = config_path + '.disabled'
         existing_content = """/var/log/test/*.log {
     daily
     rotate 7
 }"""
 
         def exists_side_effect(path):
-            return path == disabled_path
+            return path == config_path + '.disabled'
 
         with patch('os.path.exists', side_effect=exists_side_effect), \
              patch('builtins.open', mock_open(read_data=existing_content)), \

@@ -880,16 +880,17 @@ class LogrotateConfig:
                         os.remove(old_path)
 
                 try:
-                    with open(self.result["config_file"], "w") as f:
+                    config_file_path = str(self.result["config_file"])
+                    with open(config_file_path, "w") as f:
                         f.write(new_content)
-                    os.chmod(self.result["config_file"], 0o644)
+                    os.chmod(config_file_path, 0o644)
                 except Exception as e:
                     self.module.fail_json(
                         msg=f"Failed to write config file {self.result['config_file']}: {to_native(e)}"
                     )
 
                 if self.module.get_bin_path("logrotate"):
-                    test_cmd = ["logrotate", "-d", self.result["config_file"]]
+                    test_cmd = ["logrotate", "-d", str(self.result["config_file"])]
                     rc, stdout, stderr = self.module.run_command(test_cmd)
                     if rc != 0:
                         self.module.warn(
