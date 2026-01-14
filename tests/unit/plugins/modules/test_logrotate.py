@@ -51,22 +51,14 @@ class TestLogrotateConfig(unittest.TestCase):
         self.mock_ansible_basic.AnsibleModule.return_value = self.mock_module
         self.config_dir = os.path.join(self.test_dir, "logrotate.d")
         os.makedirs(self.config_dir, exist_ok=True)
-        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
         for module_name in list(sys.modules.keys()):
             if 'logrotate' in module_name or 'ansible_collections.community.general.plugins.modules' in module_name:
                 del sys.modules[module_name]
-        try:
-            from ansible_collections.community.general.plugins.modules import logrotate as logrotate_module
-            self.logrotate_module = logrotate_module
-        except ImportError:
-            import logrotate as logrotate_module
-            self.logrotate_module = logrotate_module
 
     def tearDown(self):
         """Clean up after test."""
-        if os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) in sys.path:
-            sys.path.remove(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        pass
 
     def _setup_module_params(self, **params):
         """Helper to set up module parameters."""
@@ -95,12 +87,14 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_create_new_configuration(self):
         """Test creating a new logrotate configuration."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params()
         with patch('os.path.exists', return_value=False), \
              patch('os.makedirs'), \
              patch('builtins.open', mock_open()) as mock_file, \
              patch('os.chmod') as mock_chmod:
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             result = config.apply()
             self.assertTrue(result['changed'])
             self.assertIn('config_file', result)
@@ -111,6 +105,8 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_update_existing_configuration(self):
         """Test updating an existing logrotate configuration."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(rotate_count=14)
         existing_content = """/var/log/test/*.log {
     daily
@@ -124,7 +120,7 @@ class TestLogrotateConfig(unittest.TestCase):
              patch('builtins.open', mock_open(read_data=existing_content)), \
              patch('os.remove') as mock_remove, \
              patch('os.chmod') as mock_chmod:
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             result = config.apply()
             self.assertTrue(result['changed'])
             self.assertIn('14', result['config_content'])
@@ -133,6 +129,8 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_remove_configuration(self):
         """Test removing a logrotate configuration."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(state='absent')
         config_path = os.path.join(self.config_dir, 'test')
 
@@ -141,13 +139,15 @@ class TestLogrotateConfig(unittest.TestCase):
 
         with patch('os.path.exists', side_effect=exists_side_effect), \
              patch('os.remove') as mock_remove:
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             result = config.apply()
             self.assertTrue(result['changed'])
             self.assertTrue(mock_remove.called)
 
     def test_disable_configuration(self):
         """Test disabling a logrotate configuration."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(enabled=False)
         config_path = os.path.join(self.config_dir, 'test')
         existing_content = """/var/log/test/*.log {
@@ -165,7 +165,7 @@ class TestLogrotateConfig(unittest.TestCase):
              patch('os.makedirs'):
             mock_file_write = mock_open()
             with patch('builtins.open', mock_file_write):
-                config = self.logrotate_module.LogrotateConfig(self.mock_module)
+                config = logrotate.LogrotateConfig(self.mock_module)
                 result = config.apply()
             self.assertTrue(result['changed'])
             self.assertEqual(result['enabled_state'], False)
@@ -173,6 +173,8 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_enable_configuration(self):
         """Test enabling a disabled logrotate configuration."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(enabled=True)
         config_path = os.path.join(self.config_dir, 'test')
         existing_content = """/var/log/test/*.log {
@@ -189,7 +191,7 @@ class TestLogrotateConfig(unittest.TestCase):
              patch('os.chmod'), \
              patch('os.makedirs'):
             self.mock_module.atomic_move = Mock()
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             result = config.apply()
             self.assertTrue(result['changed'])
             self.assertEqual(result['enabled_state'], True)
@@ -197,36 +199,44 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_validation_missing_paths(self):
         """Test validation when paths are missing for new configuration."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(paths=None)
         with patch('os.path.exists', return_value=False):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             with self.assertRaises(Exception) as context:
                 config.apply()
             self.assertIn('fail_json called', str(context.exception))
 
     def test_validation_size_and_maxsize_exclusive(self):
         """Test validation when both size and maxsize are specified."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(size='100M', maxsize='200M')
         with patch('os.path.exists', return_value=False):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             with self.assertRaises(Exception) as context:
                 config.apply()
             self.assertIn('fail_json called', str(context.exception))
 
     def test_check_mode(self):
         """Test that no changes are made in check mode."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params()
         self.mock_module.check_mode = True
         with patch('os.path.exists', return_value=False), \
              patch('os.makedirs') as mock_makedirs, \
              patch('builtins.open', mock_open()):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             result = config.apply()
             self.assertTrue(result['changed'])
             mock_makedirs.assert_called_once()
 
     def test_backup_configuration(self):
         """Test backing up configuration before changes."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(backup=True, rotate_count=14)
         existing_content = """/var/log/test/*.log {
     daily
@@ -238,13 +248,15 @@ class TestLogrotateConfig(unittest.TestCase):
              patch('os.makedirs') as mock_makedirs, \
              patch('os.remove'), \
              patch('os.chmod'):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             result = config.apply()
             self.assertTrue(result['changed'])
             mock_makedirs.assert_called()
 
     def test_generate_config_with_scripts(self):
         """Test generating configuration with pre/post scripts."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(
             prerotate="echo 'Pre-rotation'",
             postrotate=["systemctl reload test", "logger 'Rotation done'"],
@@ -255,7 +267,7 @@ class TestLogrotateConfig(unittest.TestCase):
              patch('os.makedirs'), \
              patch('builtins.open', mock_open()), \
              patch('os.chmod'):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
             self.assertIn('prerotate', content)
@@ -267,6 +279,8 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_compression_methods(self):
         """Test different compression methods."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         compression_methods = ['gzip', 'bzip2', 'xz', 'zstd', 'lzma', 'lz4']
         for method in compression_methods:
             with self.subTest(method=method):
@@ -275,7 +289,7 @@ class TestLogrotateConfig(unittest.TestCase):
                      patch('os.makedirs'), \
                      patch('builtins.open', mock_open()), \
                      patch('os.chmod'):
-                    config = self.logrotate_module.LogrotateConfig(self.mock_module)
+                    config = logrotate.LogrotateConfig(self.mock_module)
                     result = config.apply()
                     content = result['config_content']
                     if method != 'gzip':
@@ -284,6 +298,8 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_size_based_rotation(self):
         """Test size-based rotation configuration."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(
             size='100M',
             rotation_period='daily'
@@ -292,7 +308,7 @@ class TestLogrotateConfig(unittest.TestCase):
              patch('os.makedirs'), \
              patch('builtins.open', mock_open()), \
              patch('os.chmod'):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
             self.assertIn('size 100M', content)
@@ -300,14 +316,21 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_logrotate_not_installed(self):
         """Test error when logrotate is not installed."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params()
         self.mock_module.get_bin_path.return_value = None
-        with self.assertRaises(Exception) as context:
-            self.logrotate_module.main()
-        self.assertIn('fail_json called', str(context.exception))
+        
+        with patch.object(logrotate, 'AnsibleModule') as mock_module_class:
+            mock_module_class.return_value = self.mock_module
+            with self.assertRaises(Exception) as context:
+                logrotate.main()
+            self.assertIn('fail_json called', str(context.exception))
 
     def test_parse_existing_config_paths(self):
         """Test parsing paths from existing configuration."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(paths=None)
         existing_content = """/var/log/app1/*.log
 {
@@ -322,19 +345,21 @@ class TestLogrotateConfig(unittest.TestCase):
                  patch('os.makedirs'), \
                  patch('os.remove'), \
                  patch('os.chmod'):
-                config = self.logrotate_module.LogrotateConfig(self.mock_module)
+                config = logrotate.LogrotateConfig(self.mock_module)
                 result = config.apply()
                 self.assertTrue(result['changed'])
                 self.assertIn('/var/log/app1/*.log', result['config_content'])
 
     def test_nodelaycompress_parameter(self):
         """Test nodelaycompress parameter."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(nodelaycompress=True)
         with patch('os.path.exists', return_value=False), \
              patch('os.makedirs'), \
              patch('builtins.open', mock_open()), \
              patch('os.chmod'):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
             self.assertIn('nodelaycompress', content)
@@ -342,12 +367,14 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_shred_and_shredcycles_parameters(self):
         """Test shred and shredcycles parameters."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(shred=True, shredcycles=3)
         with patch('os.path.exists', return_value=False), \
              patch('os.makedirs'), \
              patch('builtins.open', mock_open()), \
              patch('os.chmod'):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
             self.assertIn('shred', content)
@@ -356,12 +383,14 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_copy_parameter(self):
         """Test copy parameter."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(copy=True, copytruncate=False)
         with patch('os.path.exists', return_value=False), \
              patch('os.makedirs'), \
              patch('builtins.open', mock_open()), \
              patch('os.chmod'):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
             self.assertIn('copy', content)
@@ -370,12 +399,14 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_renamecopy_parameter(self):
         """Test renamecopy parameter."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(renamecopy=True)
         with patch('os.path.exists', return_value=False), \
              patch('os.makedirs'), \
              patch('builtins.open', mock_open()), \
              patch('os.chmod'):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
             self.assertIn('renamecopy', content)
@@ -383,12 +414,14 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_minsize_parameter(self):
         """Test minsize parameter."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(minsize="100k")
         with patch('os.path.exists', return_value=False), \
              patch('os.makedirs'), \
              patch('builtins.open', mock_open()), \
              patch('os.chmod'):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
             self.assertIn('minsize 100k', content)
@@ -396,12 +429,14 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_dateyesterday_parameter(self):
         """Test dateyesterday parameter."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(dateext=True, dateyesterday=True)
         with patch('os.path.exists', return_value=False), \
              patch('os.makedirs'), \
              patch('builtins.open', mock_open()), \
              patch('os.chmod'):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
             self.assertIn('dateext', content)
@@ -410,12 +445,14 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_createolddir_parameter(self):
         """Test createolddir parameter."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(olddir="/var/log/archives", createolddir=True)
         with patch('os.path.exists', return_value=False), \
              patch('os.makedirs'), \
              patch('builtins.open', mock_open()), \
              patch('os.chmod'):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
             self.assertIn('olddir /var/log/archives', content)
@@ -424,12 +461,14 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_start_parameter(self):
         """Test start parameter."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(start=1)
         with patch('os.path.exists', return_value=False), \
              patch('os.makedirs'), \
              patch('builtins.open', mock_open()), \
              patch('os.chmod'):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
             self.assertIn('start 1', content)
@@ -437,12 +476,14 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_syslog_parameter(self):
         """Test syslog parameter."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(syslog=True)
         with patch('os.path.exists', return_value=False), \
              patch('os.makedirs'), \
              patch('builtins.open', mock_open()), \
              patch('os.chmod'):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
             self.assertIn('syslog', content)
@@ -450,51 +491,63 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_validation_copy_and_copytruncate_exclusive(self):
         """Test validation when both copy and copytruncate are specified."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(copy=True, copytruncate=True)
         with patch('os.path.exists', return_value=False):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             with self.assertRaises(Exception) as context:
                 config.apply()
             self.assertIn('fail_json called', str(context.exception))
 
     def test_validation_copy_and_renamecopy_exclusive(self):
         """Test validation when both copy and renamecopy are specified."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(copy=True, renamecopy=True)
         with patch('os.path.exists', return_value=False):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             with self.assertRaises(Exception) as context:
                 config.apply()
             self.assertIn('fail_json called', str(context.exception))
 
     def test_validation_shredcycles_positive(self):
         """Test validation when shredcycles is not positive."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(shredcycles=0)
         with patch('os.path.exists', return_value=False):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             with self.assertRaises(Exception) as context:
                 config.apply()
             self.assertIn('fail_json called', str(context.exception))
 
     def test_validation_start_non_negative(self):
         """Test validation when start is negative."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(start=-1)
         with patch('os.path.exists', return_value=False):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             with self.assertRaises(Exception) as context:
                 config.apply()
             self.assertIn('fail_json called', str(context.exception))
 
     def test_validation_olddir_and_noolddir_exclusive(self):
         """Test validation when both olddir and noolddir are specified."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(olddir="/var/log/archives", noolddir=True)
         with patch('os.path.exists', return_value=False):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             with self.assertRaises(Exception) as context:
                 config.apply()
             self.assertIn('fail_json called', str(context.exception))
 
     def test_all_new_parameters_together(self):
         """Test all new parameters together in one configuration."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         self._setup_module_params(
             nodelaycompress=True,
             shred=True,
@@ -516,7 +569,7 @@ class TestLogrotateConfig(unittest.TestCase):
              patch('os.makedirs'), \
              patch('builtins.open', mock_open()), \
              patch('os.chmod'):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
             self.assertTrue(result['changed'])
@@ -540,10 +593,13 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_parameter_interactions(self):
         """Test interactions between related parameters."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
+        # Проверяем, что olddir и noolddir не могут быть указаны вместе
         self._setup_module_params(olddir="/var/log/archives", noolddir=True)
 
         with patch('os.path.exists', return_value=False):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
 
             with self.assertRaises(Exception) as context:
                 config.apply()
@@ -553,7 +609,7 @@ class TestLogrotateConfig(unittest.TestCase):
         self._setup_module_params(copy=True, renamecopy=True)
 
         with patch('os.path.exists', return_value=False):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
 
             with self.assertRaises(Exception) as context:
                 config.apply()
@@ -563,7 +619,7 @@ class TestLogrotateConfig(unittest.TestCase):
         self._setup_module_params(copy=True, copytruncate=True)
 
         with patch('os.path.exists', return_value=False):
-            config = self.logrotate_module.LogrotateConfig(self.mock_module)
+            config = logrotate.LogrotateConfig(self.mock_module)
 
             with self.assertRaises(Exception) as context:
                 config.apply()
@@ -572,6 +628,8 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_size_format_validation(self):
         """Test validation of size format parameters."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         valid_sizes = ["100k", "100M", "1G", "10", "500K", "2M", "3G"]
 
         for size in valid_sizes:
@@ -582,7 +640,7 @@ class TestLogrotateConfig(unittest.TestCase):
                      patch('os.makedirs'), \
                      patch('builtins.open', mock_open()), \
                      patch('os.chmod'):
-                    config = self.logrotate_module.LogrotateConfig(self.mock_module)
+                    config = logrotate.LogrotateConfig(self.mock_module)
 
                     try:
                         result = config.apply()
@@ -597,7 +655,7 @@ class TestLogrotateConfig(unittest.TestCase):
                 self._setup_module_params(size=size)
 
                 with patch('os.path.exists', return_value=False):
-                    config = self.logrotate_module.LogrotateConfig(self.mock_module)
+                    config = logrotate.LogrotateConfig(self.mock_module)
 
                     with self.assertRaises(Exception) as context:
                         config.apply()
@@ -606,6 +664,8 @@ class TestLogrotateConfig(unittest.TestCase):
 
     def test_maxsize_format_validation(self):
         """Test validation of maxsize format parameters."""
+        from ansible_collections.community.general.plugins.modules import logrotate
+        
         valid_sizes = ["100k", "100M", "1G", "10", "500K", "2M", "3G"]
 
         for size in valid_sizes:
@@ -616,7 +676,7 @@ class TestLogrotateConfig(unittest.TestCase):
                      patch('os.makedirs'), \
                      patch('builtins.open', mock_open()), \
                      patch('os.chmod'):
-                    config = self.logrotate_module.LogrotateConfig(self.mock_module)
+                    config = logrotate.LogrotateConfig(self.mock_module)
 
                     try:
                         result = config.apply()
@@ -631,7 +691,7 @@ class TestLogrotateConfig(unittest.TestCase):
                 self._setup_module_params(maxsize=size)
 
                 with patch('os.path.exists', return_value=False):
-                    config = self.logrotate_module.LogrotateConfig(self.mock_module)
+                    config = logrotate.LogrotateConfig(self.mock_module)
 
                     with self.assertRaises(Exception) as context:
                         config.apply()
