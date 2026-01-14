@@ -54,7 +54,6 @@ class TestLogrotateConfig(unittest.TestCase):
         self.mock_ansible_basic.AnsibleModule.return_value = self.mock_module
         self.config_dir = os.path.join(self.test_dir, "logrotate.d")
         os.makedirs(self.config_dir, exist_ok=True)
-
         for module_name in list(sys.modules.keys()):
             if "logrotate" in module_name or "ansible_collections.community.general.plugins.modules" in module_name:
                 del sys.modules[module_name]
@@ -93,8 +92,8 @@ class TestLogrotateConfig(unittest.TestCase):
         from ansible_collections.community.general.plugins.modules import logrotate
 
         self._setup_module_params()
-        with patch("os.path.exists", return_value=False) as _:
-            with patch("os.makedirs") as _:
+        with patch("os.path.exists", return_value=False):
+            with patch("os.makedirs"):
                 with patch("builtins.open", mock_open()) as mock_file:
                     with patch("os.chmod") as mock_chmod:
                         config = logrotate.LogrotateConfig(self.mock_module)
@@ -119,8 +118,8 @@ class TestLogrotateConfig(unittest.TestCase):
     missingok
     notifempty
 }"""
-        with patch("os.path.exists", return_value=True) as _:
-            with patch("builtins.open", mock_open(read_data=existing_content)) as _:
+        with patch("os.path.exists", return_value=True):
+            with patch("builtins.open", mock_open(read_data=existing_content)):
                 with patch("os.remove") as mock_remove:
                     with patch("os.chmod") as mock_chmod:
                         config = logrotate.LogrotateConfig(self.mock_module)
@@ -140,7 +139,7 @@ class TestLogrotateConfig(unittest.TestCase):
         def exists_side_effect(path):
             return path in (config_path, config_path + ".disabled")
 
-        with patch("os.path.exists", side_effect=exists_side_effect) as _:
+        with patch("os.path.exists", side_effect=exists_side_effect):
             with patch("os.remove") as mock_remove:
                 config = logrotate.LogrotateConfig(self.mock_module)
                 result = config.apply()
@@ -161,11 +160,11 @@ class TestLogrotateConfig(unittest.TestCase):
         def exists_side_effect(path):
             return path == config_path
 
-        with patch("os.path.exists", side_effect=exists_side_effect) as _:
-            with patch("builtins.open", mock_open(read_data=existing_content)) as _:
-                with patch("os.remove") as _:
-                    with patch("os.chmod") as _:
-                        with patch("os.makedirs") as _:
+        with patch("os.path.exists", side_effect=exists_side_effect):
+            with patch("builtins.open", mock_open(read_data=existing_content)):
+                with patch("os.remove"):
+                    with patch("os.chmod"):
+                        with patch("os.makedirs"):
                             mock_file_write = mock_open()
                             with patch("builtins.open", mock_file_write):
                                 config = logrotate.LogrotateConfig(self.mock_module)
@@ -188,11 +187,11 @@ class TestLogrotateConfig(unittest.TestCase):
         def exists_side_effect(path):
             return path == config_path + ".disabled"
 
-        with patch("os.path.exists", side_effect=exists_side_effect) as _:
-            with patch("builtins.open", mock_open(read_data=existing_content)) as _:
-                with patch("os.remove") as _:
-                    with patch("os.chmod") as _:
-                        with patch("os.makedirs") as _:
+        with patch("os.path.exists", side_effect=exists_side_effect):
+            with patch("builtins.open", mock_open(read_data=existing_content)):
+                with patch("os.remove"):
+                    with patch("os.chmod"):
+                        with patch("os.makedirs"):
                             self.mock_module.atomic_move = Mock()
                             config = logrotate.LogrotateConfig(self.mock_module)
                             result = config.apply()
@@ -205,7 +204,7 @@ class TestLogrotateConfig(unittest.TestCase):
         from ansible_collections.community.general.plugins.modules import logrotate
 
         self._setup_module_params(paths=None)
-        with patch("os.path.exists", return_value=False) as _:
+        with patch("os.path.exists", return_value=False):
             config = logrotate.LogrotateConfig(self.mock_module)
             with self.assertRaises(Exception) as context:
                 config.apply()
@@ -216,7 +215,7 @@ class TestLogrotateConfig(unittest.TestCase):
         from ansible_collections.community.general.plugins.modules import logrotate
 
         self._setup_module_params(size="100M", maxsize="200M")
-        with patch("os.path.exists", return_value=False) as _:
+        with patch("os.path.exists", return_value=False):
             config = logrotate.LogrotateConfig(self.mock_module)
             with self.assertRaises(Exception) as context:
                 config.apply()
@@ -228,9 +227,9 @@ class TestLogrotateConfig(unittest.TestCase):
 
         self._setup_module_params()
         self.mock_module.check_mode = True
-        with patch("os.path.exists", return_value=False) as _:
+        with patch("os.path.exists", return_value=False):
             with patch("os.makedirs") as mock_makedirs:
-                with patch("builtins.open", mock_open()) as _:
+                with patch("builtins.open", mock_open()):
                     config = logrotate.LogrotateConfig(self.mock_module)
                     result = config.apply()
                     self.assertTrue(result["changed"])
@@ -246,11 +245,11 @@ class TestLogrotateConfig(unittest.TestCase):
     rotate 7
 }"""
 
-        with patch("os.path.exists", return_value=True) as _:
-            with patch("builtins.open", mock_open(read_data=existing_content)) as _:
+        with patch("os.path.exists", return_value=True):
+            with patch("builtins.open", mock_open(read_data=existing_content)):
                 with patch("os.makedirs") as mock_makedirs:
-                    with patch("os.remove") as _:
-                        with patch("os.chmod") as _:
+                    with patch("os.remove"):
+                        with patch("os.chmod"):
                             config = logrotate.LogrotateConfig(self.mock_module)
                             result = config.apply()
                             self.assertTrue(result["changed"])
@@ -266,10 +265,10 @@ class TestLogrotateConfig(unittest.TestCase):
             firstaction="echo 'First action'",
             lastaction="echo 'Last action'",
         )
-        with patch("os.path.exists", return_value=False) as _:
-            with patch("os.makedirs") as _:
-                with patch("builtins.open", mock_open()) as _:
-                    with patch("os.chmod") as _:
+        with patch("os.path.exists", return_value=False):
+            with patch("os.makedirs"):
+                with patch("builtins.open", mock_open()):
+                    with patch("os.chmod"):
                         config = logrotate.LogrotateConfig(self.mock_module)
                         result = config.apply()
                         content = result["config_content"]
@@ -288,10 +287,10 @@ class TestLogrotateConfig(unittest.TestCase):
         for method in compression_methods:
             with self.subTest(method=method):
                 self._setup_module_params(compression_method=method)
-                with patch("os.path.exists", return_value=False) as _:
-                    with patch("os.makedirs") as _:
-                        with patch("builtins.open", mock_open()) as _:
-                            with patch("os.chmod") as _:
+                with patch("os.path.exists", return_value=False):
+                    with patch("os.makedirs"):
+                        with patch("builtins.open", mock_open()):
+                            with patch("os.chmod"):
                                 config = logrotate.LogrotateConfig(self.mock_module)
                                 result = config.apply()
                                 content = result["config_content"]
@@ -304,10 +303,10 @@ class TestLogrotateConfig(unittest.TestCase):
         from ansible_collections.community.general.plugins.modules import logrotate
 
         self._setup_module_params(size="100M", rotation_period="daily")
-        with patch("os.path.exists", return_value=False) as _:
-            with patch("os.makedirs") as _:
-                with patch("builtins.open", mock_open()) as _:
-                    with patch("os.chmod") as _:
+        with patch("os.path.exists", return_value=False):
+            with patch("os.makedirs"):
+                with patch("builtins.open", mock_open()):
+                    with patch("os.chmod"):
                         config = logrotate.LogrotateConfig(self.mock_module)
                         result = config.apply()
                         content = result["config_content"]
@@ -339,12 +338,12 @@ class TestLogrotateConfig(unittest.TestCase):
     compress
 }"""
 
-        with patch("os.path.exists", return_value=True) as _:
+        with patch("os.path.exists", return_value=True):
             mock_file_read = mock_open(read_data=existing_content)
-            with patch("builtins.open", mock_file_read) as _:
-                with patch("os.makedirs") as _:
-                    with patch("os.remove") as _:
-                        with patch("os.chmod") as _:
+            with patch("builtins.open", mock_file_read):
+                with patch("os.makedirs"):
+                    with patch("os.remove"):
+                        with patch("os.chmod"):
                             config = logrotate.LogrotateConfig(self.mock_module)
                             result = config.apply()
                             self.assertTrue(result["changed"])
@@ -355,10 +354,10 @@ class TestLogrotateConfig(unittest.TestCase):
         from ansible_collections.community.general.plugins.modules import logrotate
 
         self._setup_module_params(nodelaycompress=True)
-        with patch("os.path.exists", return_value=False) as _:
-            with patch("os.makedirs") as _:
-                with patch("builtins.open", mock_open()) as _:
-                    with patch("os.chmod") as _:
+        with patch("os.path.exists", return_value=False):
+            with patch("os.makedirs"):
+                with patch("builtins.open", mock_open()):
+                    with patch("os.chmod"):
                         config = logrotate.LogrotateConfig(self.mock_module)
                         result = config.apply()
                         content = result["config_content"]
@@ -370,10 +369,10 @@ class TestLogrotateConfig(unittest.TestCase):
         from ansible_collections.community.general.plugins.modules import logrotate
 
         self._setup_module_params(shred=True, shredcycles=3)
-        with patch("os.path.exists", return_value=False) as _:
-            with patch("os.makedirs") as _:
-                with patch("builtins.open", mock_open()) as _:
-                    with patch("os.chmod") as _:
+        with patch("os.path.exists", return_value=False):
+            with patch("os.makedirs"):
+                with patch("builtins.open", mock_open()):
+                    with patch("os.chmod"):
                         config = logrotate.LogrotateConfig(self.mock_module)
                         result = config.apply()
                         content = result["config_content"]
@@ -386,10 +385,10 @@ class TestLogrotateConfig(unittest.TestCase):
         from ansible_collections.community.general.plugins.modules import logrotate
 
         self._setup_module_params(copy=True, copytruncate=False)
-        with patch("os.path.exists", return_value=False) as _:
-            with patch("os.makedirs") as _:
-                with patch("builtins.open", mock_open()) as _:
-                    with patch("os.chmod") as _:
+        with patch("os.path.exists", return_value=False):
+            with patch("os.makedirs"):
+                with patch("builtins.open", mock_open()):
+                    with patch("os.chmod"):
                         config = logrotate.LogrotateConfig(self.mock_module)
                         result = config.apply()
                         content = result["config_content"]
@@ -402,10 +401,10 @@ class TestLogrotateConfig(unittest.TestCase):
         from ansible_collections.community.general.plugins.modules import logrotate
 
         self._setup_module_params(renamecopy=True)
-        with patch("os.path.exists", return_value=False) as _:
-            with patch("os.makedirs") as _:
-                with patch("builtins.open", mock_open()) as _:
-                    with patch("os.chmod") as _:
+        with patch("os.path.exists", return_value=False):
+            with patch("os.makedirs"):
+                with patch("builtins.open", mock_open()):
+                    with patch("os.chmod"):
                         config = logrotate.LogrotateConfig(self.mock_module)
                         result = config.apply()
                         content = result["config_content"]
@@ -417,10 +416,10 @@ class TestLogrotateConfig(unittest.TestCase):
         from ansible_collections.community.general.plugins.modules import logrotate
 
         self._setup_module_params(minsize="100k")
-        with patch("os.path.exists", return_value=False) as _:
-            with patch("os.makedirs") as _:
-                with patch("builtins.open", mock_open()) as _:
-                    with patch("os.chmod") as _:
+        with patch("os.path.exists", return_value=False):
+            with patch("os.makedirs"):
+                with patch("builtins.open", mock_open()):
+                    with patch("os.chmod"):
                         config = logrotate.LogrotateConfig(self.mock_module)
                         result = config.apply()
                         content = result["config_content"]
@@ -432,10 +431,10 @@ class TestLogrotateConfig(unittest.TestCase):
         from ansible_collections.community.general.plugins.modules import logrotate
 
         self._setup_module_params(dateext=True, dateyesterday=True)
-        with patch("os.path.exists", return_value=False) as _:
-            with patch("os.makedirs") as _:
-                with patch("builtins.open", mock_open()) as _:
-                    with patch("os.chmod") as _:
+        with patch("os.path.exists", return_value=False):
+            with patch("os.makedirs"):
+                with patch("builtins.open", mock_open()):
+                    with patch("os.chmod"):
                         config = logrotate.LogrotateConfig(self.mock_module)
                         result = config.apply()
                         content = result["config_content"]
@@ -448,10 +447,10 @@ class TestLogrotateConfig(unittest.TestCase):
         from ansible_collections.community.general.plugins.modules import logrotate
 
         self._setup_module_params(olddir="/var/log/archives", createolddir=True)
-        with patch("os.path.exists", return_value=False) as _:
-            with patch("os.makedirs") as _:
-                with patch("builtins.open", mock_open()) as _:
-                    with patch("os.chmod") as _:
+        with patch("os.path.exists", return_value=False):
+            with patch("os.makedirs"):
+                with patch("builtins.open", mock_open()):
+                    with patch("os.chmod"):
                         config = logrotate.LogrotateConfig(self.mock_module)
                         result = config.apply()
                         content = result["config_content"]
@@ -464,10 +463,10 @@ class TestLogrotateConfig(unittest.TestCase):
         from ansible_collections.community.general.plugins.modules import logrotate
 
         self._setup_module_params(start=1)
-        with patch("os.path.exists", return_value=False) as _:
-            with patch("os.makedirs") as _:
-                with patch("builtins.open", mock_open()) as _:
-                    with patch("os.chmod") as _:
+        with patch("os.path.exists", return_value=False):
+            with patch("os.makedirs"):
+                with patch("builtins.open", mock_open()):
+                    with patch("os.chmod"):
                         config = logrotate.LogrotateConfig(self.mock_module)
                         result = config.apply()
                         content = result["config_content"]
@@ -479,10 +478,10 @@ class TestLogrotateConfig(unittest.TestCase):
         from ansible_collections.community.general.plugins.modules import logrotate
 
         self._setup_module_params(syslog=True)
-        with patch("os.path.exists", return_value=False) as _:
-            with patch("os.makedirs") as _:
-                with patch("builtins.open", mock_open()) as _:
-                    with patch("os.chmod") as _:
+        with patch("os.path.exists", return_value=False):
+            with patch("os.makedirs"):
+                with patch("builtins.open", mock_open()):
+                    with patch("os.chmod"):
                         config = logrotate.LogrotateConfig(self.mock_module)
                         result = config.apply()
                         content = result["config_content"]
@@ -494,7 +493,7 @@ class TestLogrotateConfig(unittest.TestCase):
         from ansible_collections.community.general.plugins.modules import logrotate
 
         self._setup_module_params(copy=True, copytruncate=True)
-        with patch("os.path.exists", return_value=False) as _:
+        with patch("os.path.exists", return_value=False):
             config = logrotate.LogrotateConfig(self.mock_module)
             with self.assertRaises(Exception) as context:
                 config.apply()
@@ -505,7 +504,7 @@ class TestLogrotateConfig(unittest.TestCase):
         from ansible_collections.community.general.plugins.modules import logrotate
 
         self._setup_module_params(copy=True, renamecopy=True)
-        with patch("os.path.exists", return_value=False) as _:
+        with patch("os.path.exists", return_value=False):
             config = logrotate.LogrotateConfig(self.mock_module)
             with self.assertRaises(Exception) as context:
                 config.apply()
@@ -516,7 +515,7 @@ class TestLogrotateConfig(unittest.TestCase):
         from ansible_collections.community.general.plugins.modules import logrotate
 
         self._setup_module_params(shredcycles=0)
-        with patch("os.path.exists", return_value=False) as _:
+        with patch("os.path.exists", return_value=False):
             config = logrotate.LogrotateConfig(self.mock_module)
             with self.assertRaises(Exception) as context:
                 config.apply()
@@ -527,7 +526,7 @@ class TestLogrotateConfig(unittest.TestCase):
         from ansible_collections.community.general.plugins.modules import logrotate
 
         self._setup_module_params(start=-1)
-        with patch("os.path.exists", return_value=False) as _:
+        with patch("os.path.exists", return_value=False):
             config = logrotate.LogrotateConfig(self.mock_module)
             with self.assertRaises(Exception) as context:
                 config.apply()
@@ -538,7 +537,7 @@ class TestLogrotateConfig(unittest.TestCase):
         from ansible_collections.community.general.plugins.modules import logrotate
 
         self._setup_module_params(olddir="/var/log/archives", noolddir=True)
-        with patch("os.path.exists", return_value=False) as _:
+        with patch("os.path.exists", return_value=False):
             config = logrotate.LogrotateConfig(self.mock_module)
             with self.assertRaises(Exception) as context:
                 config.apply()
@@ -565,10 +564,10 @@ class TestLogrotateConfig(unittest.TestCase):
             delaycompress=False,
         )
 
-        with patch("os.path.exists", return_value=False) as _:
-            with patch("os.makedirs") as _:
-                with patch("builtins.open", mock_open()) as _:
-                    with patch("os.chmod") as _:
+        with patch("os.path.exists", return_value=False):
+            with patch("os.makedirs"):
+                with patch("builtins.open", mock_open()):
+                    with patch("os.chmod"):
                         config = logrotate.LogrotateConfig(self.mock_module)
                         result = config.apply()
                         content = result["config_content"]
@@ -597,17 +596,16 @@ class TestLogrotateConfig(unittest.TestCase):
 
         self._setup_module_params(olddir="/var/log/archives", noolddir=True)
 
-        with patch("os.path.exists", return_value=False) as _:
+        with patch("os.path.exists", return_value=False):
             config = logrotate.LogrotateConfig(self.mock_module)
 
             with self.assertRaises(Exception) as context:
                 config.apply()
 
             self.assertIn("fail_json called", str(context.exception))
-
         self._setup_module_params(copy=True, renamecopy=True)
 
-        with patch("os.path.exists", return_value=False) as _:
+        with patch("os.path.exists", return_value=False):
             config = logrotate.LogrotateConfig(self.mock_module)
 
             with self.assertRaises(Exception) as context:
@@ -617,7 +615,7 @@ class TestLogrotateConfig(unittest.TestCase):
 
         self._setup_module_params(copy=True, copytruncate=True)
 
-        with patch("os.path.exists", return_value=False) as _:
+        with patch("os.path.exists", return_value=False):
             config = logrotate.LogrotateConfig(self.mock_module)
 
             with self.assertRaises(Exception) as context:
@@ -635,10 +633,10 @@ class TestLogrotateConfig(unittest.TestCase):
             with self.subTest(valid_size=size):
                 self._setup_module_params(size=size)
 
-                with patch("os.path.exists", return_value=False) as _:
-                    with patch("os.makedirs") as _:
-                        with patch("builtins.open", mock_open()) as _:
-                            with patch("os.chmod") as _:
+                with patch("os.path.exists", return_value=False):
+                    with patch("os.makedirs"):
+                        with patch("builtins.open", mock_open()):
+                            with patch("os.chmod"):
                                 config = logrotate.LogrotateConfig(self.mock_module)
 
                                 try:
@@ -653,7 +651,7 @@ class TestLogrotateConfig(unittest.TestCase):
             with self.subTest(invalid_size=size):
                 self._setup_module_params(size=size)
 
-                with patch("os.path.exists", return_value=False) as _:
+                with patch("os.path.exists", return_value=False):
                     config = logrotate.LogrotateConfig(self.mock_module)
 
                     with self.assertRaises(Exception) as context:
@@ -671,10 +669,10 @@ class TestLogrotateConfig(unittest.TestCase):
             with self.subTest(valid_size=size):
                 self._setup_module_params(maxsize=size)
 
-                with patch("os.path.exists", return_value=False) as _:
-                    with patch("os.makedirs") as _:
-                        with patch("builtins.open", mock_open()) as _:
-                            with patch("os.chmod") as _:
+                with patch("os.path.exists", return_value=False):
+                    with patch("os.makedirs"):
+                        with patch("builtins.open", mock_open()):
+                            with patch("os.chmod"):
                                 config = logrotate.LogrotateConfig(self.mock_module)
 
                                 try:
@@ -689,7 +687,7 @@ class TestLogrotateConfig(unittest.TestCase):
             with self.subTest(invalid_size=size):
                 self._setup_module_params(maxsize=size)
 
-                with patch("os.path.exists", return_value=False) as _:
+                with patch("os.path.exists", return_value=False):
                     config = logrotate.LogrotateConfig(self.mock_module)
 
                     with self.assertRaises(Exception) as context:
