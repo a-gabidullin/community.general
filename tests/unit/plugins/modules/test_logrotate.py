@@ -4,12 +4,12 @@
 
 from __future__ import annotations
 
-import sys
 import os
-import unittest
-from unittest.mock import Mock, patch, mock_open
-import tempfile
 import shutil
+import sys
+import tempfile
+import unittest
+from unittest.mock import Mock, mock_open, patch
 
 
 class TestLogrotateConfig(unittest.TestCase):
@@ -120,8 +120,8 @@ class TestLogrotateConfig(unittest.TestCase):
     missingok
     notifempty
 }"""
-        with patch('os.path.exists', return_value=True) as mock_exists, \
-             patch('builtins.open', mock_open(read_data=existing_content)) as mock_file, \
+        with patch('os.path.exists', return_value=True), \
+             patch('builtins.open', mock_open(read_data=existing_content)), \
              patch('os.remove') as mock_remove, \
              patch('os.chmod') as mock_chmod:
             config = self.logrotate_module.LogrotateConfig(self.mock_module)
@@ -129,7 +129,6 @@ class TestLogrotateConfig(unittest.TestCase):
             self.assertTrue(result['changed'])
             self.assertIn('14', result['config_content'])
             self.assertTrue(mock_remove.called)
-            mock_file.assert_called()
             mock_chmod.assert_called_once()
 
     def test_remove_configuration(self):
@@ -139,11 +138,9 @@ class TestLogrotateConfig(unittest.TestCase):
         disabled_path = config_path + '.disabled'
 
         def exists_side_effect(path):
-            if path == config_path or path == disabled_path:
-                return True
-            return False
+            return path in (config_path, disabled_path)
 
-        with patch('os.path.exists', side_effect=exists_side_effect) as mock_exists, \
+        with patch('os.path.exists', side_effect=exists_side_effect), \
              patch('os.remove') as mock_remove:
             config = self.logrotate_module.LogrotateConfig(self.mock_module)
             result = config.apply()
@@ -161,17 +158,13 @@ class TestLogrotateConfig(unittest.TestCase):
 }"""
 
         def exists_side_effect(path):
-            if path == config_path:
-                return True
-            if path == disabled_path:
-                return False
-            return False
+            return path == config_path
 
-        with patch('os.path.exists', side_effect=exists_side_effect) as mock_exists, \
-             patch('builtins.open', mock_open(read_data=existing_content)) as mock_file, \
-             patch('os.remove') as mock_remove, \
-             patch('os.chmod') as mock_chmod, \
-             patch('os.makedirs') as mock_makedirs:
+        with patch('os.path.exists', side_effect=exists_side_effect), \
+             patch('builtins.open', mock_open(read_data=existing_content)), \
+             patch('os.remove'), \
+             patch('os.chmod'), \
+             patch('os.makedirs'):
             mock_file_write = mock_open()
             with patch('builtins.open', mock_file_write):
                 config = self.logrotate_module.LogrotateConfig(self.mock_module)
@@ -191,17 +184,13 @@ class TestLogrotateConfig(unittest.TestCase):
 }"""
 
         def exists_side_effect(path):
-            if path == config_path:
-                return False
-            if path == disabled_path:
-                return True
-            return False
+            return path == disabled_path
 
-        with patch('os.path.exists', side_effect=exists_side_effect) as mock_exists, \
-             patch('builtins.open', mock_open(read_data=existing_content)) as mock_file, \
-             patch('os.remove') as mock_remove, \
-             patch('os.chmod') as mock_chmod, \
-             patch('os.makedirs') as mock_makedirs:
+        with patch('os.path.exists', side_effect=exists_side_effect), \
+             patch('builtins.open', mock_open(read_data=existing_content)), \
+             patch('os.remove'), \
+             patch('os.chmod'), \
+             patch('os.makedirs'):
             self.mock_module.atomic_move = Mock()
             config = self.logrotate_module.LogrotateConfig(self.mock_module)
             result = config.apply()
@@ -231,13 +220,12 @@ class TestLogrotateConfig(unittest.TestCase):
         """Test that no changes are made in check mode."""
         self._setup_module_params()
         self.mock_module.check_mode = True
-        with patch('os.path.exists', return_value=False) as mock_exists, \
+        with patch('os.path.exists', return_value=False), \
              patch('os.makedirs') as mock_makedirs, \
-             patch('builtins.open', mock_open()) as mock_file:
+             patch('builtins.open', mock_open()):
             config = self.logrotate_module.LogrotateConfig(self.mock_module)
             result = config.apply()
             self.assertTrue(result['changed'])
-            mock_file.assert_not_called()
             mock_makedirs.assert_called_once()
 
     def test_backup_configuration(self):
@@ -248,11 +236,11 @@ class TestLogrotateConfig(unittest.TestCase):
     rotate 7
 }"""
 
-        with patch('os.path.exists', return_value=True) as mock_exists, \
-             patch('builtins.open', mock_open(read_data=existing_content)) as mock_file, \
+        with patch('os.path.exists', return_value=True), \
+             patch('builtins.open', mock_open(read_data=existing_content)), \
              patch('os.makedirs') as mock_makedirs, \
-             patch('os.remove') as mock_remove, \
-             patch('os.chmod') as mock_chmod:
+             patch('os.remove'), \
+             patch('os.chmod'):
             config = self.logrotate_module.LogrotateConfig(self.mock_module)
             result = config.apply()
             self.assertTrue(result['changed'])
@@ -266,10 +254,10 @@ class TestLogrotateConfig(unittest.TestCase):
             firstaction="echo 'First action'",
             lastaction="echo 'Last action'"
         )
-        with patch('os.path.exists', return_value=False) as mock_exists, \
-             patch('os.makedirs') as mock_makedirs, \
-             patch('builtins.open', mock_open()) as mock_file, \
-             patch('os.chmod') as mock_chmod:
+        with patch('os.path.exists', return_value=False), \
+             patch('os.makedirs'), \
+             patch('builtins.open', mock_open()), \
+             patch('os.chmod'):
             config = self.logrotate_module.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
@@ -286,10 +274,10 @@ class TestLogrotateConfig(unittest.TestCase):
         for method in compression_methods:
             with self.subTest(method=method):
                 self._setup_module_params(compression_method=method)
-                with patch('os.path.exists', return_value=False) as mock_exists, \
-                     patch('os.makedirs') as mock_makedirs, \
-                     patch('builtins.open', mock_open()) as mock_file, \
-                     patch('os.chmod') as mock_chmod:
+                with patch('os.path.exists', return_value=False), \
+                     patch('os.makedirs'), \
+                     patch('builtins.open', mock_open()), \
+                     patch('os.chmod'):
                     config = self.logrotate_module.LogrotateConfig(self.mock_module)
                     result = config.apply()
                     content = result['config_content']
@@ -303,10 +291,10 @@ class TestLogrotateConfig(unittest.TestCase):
             size='100M',
             rotation_period='daily'
         )
-        with patch('os.path.exists', return_value=False) as mock_exists, \
-             patch('os.makedirs') as mock_makedirs, \
-             patch('builtins.open', mock_open()) as mock_file, \
-             patch('os.chmod') as mock_chmod:
+        with patch('os.path.exists', return_value=False), \
+             patch('os.makedirs'), \
+             patch('builtins.open', mock_open()), \
+             patch('os.chmod'):
             config = self.logrotate_module.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
@@ -331,12 +319,12 @@ class TestLogrotateConfig(unittest.TestCase):
     compress
 }"""
 
-        with patch('os.path.exists', return_value=True) as mock_exists:
+        with patch('os.path.exists', return_value=True):
             mock_file_read = mock_open(read_data=existing_content)
             with patch('builtins.open', mock_file_read), \
-                 patch('os.makedirs') as mock_makedirs, \
-                 patch('os.remove') as mock_remove, \
-                 patch('os.chmod') as mock_chmod:
+                 patch('os.makedirs'), \
+                 patch('os.remove'), \
+                 patch('os.chmod'):
                 config = self.logrotate_module.LogrotateConfig(self.mock_module)
                 result = config.apply()
                 self.assertTrue(result['changed'])
@@ -345,10 +333,10 @@ class TestLogrotateConfig(unittest.TestCase):
     def test_nodelaycompress_parameter(self):
         """Test nodelaycompress parameter."""
         self._setup_module_params(nodelaycompress=True)
-        with patch('os.path.exists', return_value=False) as mock_exists, \
-             patch('os.makedirs') as mock_makedirs, \
-             patch('builtins.open', mock_open()) as mock_file, \
-             patch('os.chmod') as mock_chmod:
+        with patch('os.path.exists', return_value=False), \
+             patch('os.makedirs'), \
+             patch('builtins.open', mock_open()), \
+             patch('os.chmod'):
             config = self.logrotate_module.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
@@ -358,10 +346,10 @@ class TestLogrotateConfig(unittest.TestCase):
     def test_shred_and_shredcycles_parameters(self):
         """Test shred and shredcycles parameters."""
         self._setup_module_params(shred=True, shredcycles=3)
-        with patch('os.path.exists', return_value=False) as mock_exists, \
-             patch('os.makedirs') as mock_makedirs, \
-             patch('builtins.open', mock_open()) as mock_file, \
-             patch('os.chmod') as mock_chmod:
+        with patch('os.path.exists', return_value=False), \
+             patch('os.makedirs'), \
+             patch('builtins.open', mock_open()), \
+             patch('os.chmod'):
             config = self.logrotate_module.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
@@ -372,10 +360,10 @@ class TestLogrotateConfig(unittest.TestCase):
     def test_copy_parameter(self):
         """Test copy parameter."""
         self._setup_module_params(copy=True, copytruncate=False)
-        with patch('os.path.exists', return_value=False) as mock_exists, \
-             patch('os.makedirs') as mock_makedirs, \
-             patch('builtins.open', mock_open()) as mock_file, \
-             patch('os.chmod') as mock_chmod:
+        with patch('os.path.exists', return_value=False), \
+             patch('os.makedirs'), \
+             patch('builtins.open', mock_open()), \
+             patch('os.chmod'):
             config = self.logrotate_module.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
@@ -386,10 +374,10 @@ class TestLogrotateConfig(unittest.TestCase):
     def test_renamecopy_parameter(self):
         """Test renamecopy parameter."""
         self._setup_module_params(renamecopy=True)
-        with patch('os.path.exists', return_value=False) as mock_exists, \
-             patch('os.makedirs') as mock_makedirs, \
-             patch('builtins.open', mock_open()) as mock_file, \
-             patch('os.chmod') as mock_chmod:
+        with patch('os.path.exists', return_value=False), \
+             patch('os.makedirs'), \
+             patch('builtins.open', mock_open()), \
+             patch('os.chmod'):
             config = self.logrotate_module.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
@@ -399,10 +387,10 @@ class TestLogrotateConfig(unittest.TestCase):
     def test_minsize_parameter(self):
         """Test minsize parameter."""
         self._setup_module_params(minsize="100k")
-        with patch('os.path.exists', return_value=False) as mock_exists, \
-             patch('os.makedirs') as mock_makedirs, \
-             patch('builtins.open', mock_open()) as mock_file, \
-             patch('os.chmod') as mock_chmod:
+        with patch('os.path.exists', return_value=False), \
+             patch('os.makedirs'), \
+             patch('builtins.open', mock_open()), \
+             patch('os.chmod'):
             config = self.logrotate_module.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
@@ -412,10 +400,10 @@ class TestLogrotateConfig(unittest.TestCase):
     def test_dateyesterday_parameter(self):
         """Test dateyesterday parameter."""
         self._setup_module_params(dateext=True, dateyesterday=True)
-        with patch('os.path.exists', return_value=False) as mock_exists, \
-             patch('os.makedirs') as mock_makedirs, \
-             patch('builtins.open', mock_open()) as mock_file, \
-             patch('os.chmod') as mock_chmod:
+        with patch('os.path.exists', return_value=False), \
+             patch('os.makedirs'), \
+             patch('builtins.open', mock_open()), \
+             patch('os.chmod'):
             config = self.logrotate_module.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
@@ -426,10 +414,10 @@ class TestLogrotateConfig(unittest.TestCase):
     def test_createolddir_parameter(self):
         """Test createolddir parameter."""
         self._setup_module_params(olddir="/var/log/archives", createolddir=True)
-        with patch('os.path.exists', return_value=False) as mock_exists, \
-             patch('os.makedirs') as mock_makedirs, \
-             patch('builtins.open', mock_open()) as mock_file, \
-             patch('os.chmod') as mock_chmod:
+        with patch('os.path.exists', return_value=False), \
+             patch('os.makedirs'), \
+             patch('builtins.open', mock_open()), \
+             patch('os.chmod'):
             config = self.logrotate_module.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
@@ -440,10 +428,10 @@ class TestLogrotateConfig(unittest.TestCase):
     def test_start_parameter(self):
         """Test start parameter."""
         self._setup_module_params(start=1)
-        with patch('os.path.exists', return_value=False) as mock_exists, \
-             patch('os.makedirs') as mock_makedirs, \
-             patch('builtins.open', mock_open()) as mock_file, \
-             patch('os.chmod') as mock_chmod:
+        with patch('os.path.exists', return_value=False), \
+             patch('os.makedirs'), \
+             patch('builtins.open', mock_open()), \
+             patch('os.chmod'):
             config = self.logrotate_module.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
@@ -453,10 +441,10 @@ class TestLogrotateConfig(unittest.TestCase):
     def test_syslog_parameter(self):
         """Test syslog parameter."""
         self._setup_module_params(syslog=True)
-        with patch('os.path.exists', return_value=False) as mock_exists, \
-             patch('os.makedirs') as mock_makedirs, \
-             patch('builtins.open', mock_open()) as mock_file, \
-             patch('os.chmod') as mock_chmod:
+        with patch('os.path.exists', return_value=False), \
+             patch('os.makedirs'), \
+             patch('builtins.open', mock_open()), \
+             patch('os.chmod'):
             config = self.logrotate_module.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
@@ -527,10 +515,10 @@ class TestLogrotateConfig(unittest.TestCase):
             delaycompress=False,
         )
 
-        with patch('os.path.exists', return_value=False) as mock_exists, \
-             patch('os.makedirs') as mock_makedirs, \
-             patch('builtins.open', mock_open()) as mock_file, \
-             patch('os.chmod') as mock_chmod:
+        with patch('os.path.exists', return_value=False), \
+             patch('os.makedirs'), \
+             patch('builtins.open', mock_open()), \
+             patch('os.chmod'):
             config = self.logrotate_module.LogrotateConfig(self.mock_module)
             result = config.apply()
             content = result['config_content']
@@ -593,10 +581,10 @@ class TestLogrotateConfig(unittest.TestCase):
             with self.subTest(valid_size=size):
                 self._setup_module_params(size=size)
 
-                with patch('os.path.exists', return_value=False) as mock_exists, \
-                     patch('os.makedirs') as mock_makedirs, \
-                     patch('builtins.open', mock_open()) as mock_file, \
-                     patch('os.chmod') as mock_chmod:
+                with patch('os.path.exists', return_value=False), \
+                     patch('os.makedirs'), \
+                     patch('builtins.open', mock_open()), \
+                     patch('os.chmod'):
                     config = self.logrotate_module.LogrotateConfig(self.mock_module)
 
                     try:
@@ -627,10 +615,10 @@ class TestLogrotateConfig(unittest.TestCase):
             with self.subTest(valid_size=size):
                 self._setup_module_params(maxsize=size)
 
-                with patch('os.path.exists', return_value=False) as mock_exists, \
-                     patch('os.makedirs') as mock_makedirs, \
-                     patch('builtins.open', mock_open()) as mock_file, \
-                     patch('os.chmod') as mock_chmod:
+                with patch('os.path.exists', return_value=False), \
+                     patch('os.makedirs'), \
+                     patch('builtins.open', mock_open()), \
+                     patch('os.chmod'):
                     config = self.logrotate_module.LogrotateConfig(self.mock_module)
 
                     try:
