@@ -524,66 +524,44 @@ class LogrotateConfig:
             existing_content = self._read_existing_config(any_state=True)
 
             if not existing_content and not self.params.get("paths"):
-                self.module.fail_json(
-                    msg="'paths' parameter is required when creating a new configuration"
-                )
+                self.module.fail_json(msg="'paths' parameter is required when creating a new configuration")
 
             if self.params.get("size") and self.params.get("maxsize"):
-                self.module.fail_json(
-                    msg="'size' and 'maxsize' parameters are mutually exclusive"
-                )
+                self.module.fail_json(msg="'size' and 'maxsize' parameters are mutually exclusive")
 
             if self.params.get("copy") and self.params.get("copytruncate"):
-                self.module.fail_json(
-                    msg="'copy' and 'copytruncate' are mutually exclusive"
-                )
+                self.module.fail_json(msg="'copy' and 'copytruncate' are mutually exclusive")
 
             if self.params.get("copy") and self.params.get("renamecopy"):
-                self.module.fail_json(
-                    msg="'copy' and 'renamecopy' are mutually exclusive"
-                )
+                self.module.fail_json(msg="'copy' and 'renamecopy' are mutually exclusive")
 
             if self.params.get("ifempty") and self.params.get("notifempty"):
-                self.module.fail_json(
-                    msg="'ifempty' and 'notifempty' are mutually exclusive"
-                )
+                self.module.fail_json(msg="'ifempty' and 'notifempty' are mutually exclusive")
 
             if self.params.get("delaycompress") and self.params.get("nodelaycompress"):
-                self.module.fail_json(
-                    msg="'delaycompress' and 'nodelaycompress' are mutually exclusive"
-                )
+                self.module.fail_json(msg="'delaycompress' and 'nodelaycompress' are mutually exclusive")
 
             if self.params.get("olddir") and self.params.get("noolddir"):
-                self.module.fail_json(
-                    msg="'olddir' and 'noolddir' are mutually exclusive"
-                )
+                self.module.fail_json(msg="'olddir' and 'noolddir' are mutually exclusive")
 
             comp_method = self.params.get("compression_method", "gzip")
             if comp_method not in ["gzip", "bzip2", "xz", "zstd", "lzma", "lz4"]:
-                self.module.fail_json(
-                    msg=f"Invalid compression method: {comp_method}"
-                )
+                self.module.fail_json(msg=f"Invalid compression method: {comp_method}")
 
             if self.params.get("su"):
                 su_parts = self.params["su"].split()
                 if len(su_parts) != 2:
-                    self.module.fail_json(
-                        msg="'su' parameter must be in format 'user group'"
-                    )
+                    self.module.fail_json(msg="'su' parameter must be in format 'user group'")
 
             if self.params.get("shredcycles", 1) < 1:
-                self.module.fail_json(
-                    msg="'shredcycles' must be a positive integer"
-                )
+                self.module.fail_json(msg="'shredcycles' must be a positive integer")
 
             if self.params.get("start", 0) < 0:
-                self.module.fail_json(
-                    msg="'start' must be a non-negative integer"
-                )
+                self.module.fail_json(msg="'start' must be a non-negative integer")
 
             for size_param in ["size", "minsize", "maxsize"]:
                 if self.params.get(size_param):
-                    if not re.match(r'^\d+[kMG]?$', self.params[size_param], re.I):
+                    if not re.match(r"^\d+[kMG]?$", self.params[size_param], re.I):
                         self.module.fail_json(
                             msg=f"'{size_param}' must be in format 'number[k|M|G]' (e.g., '100M', '1G')"
                         )
@@ -599,14 +577,12 @@ class LogrotateConfig:
             for suffix in ["", self.disabled_suffix]:
                 config_path = os.path.join(self.config_dir, self.config_name + suffix)
                 if os.path.exists(config_path):
-                    self.result["enabled_state"] = (suffix == "")
+                    self.result["enabled_state"] = suffix == ""
                     try:
                         with open(config_path, "r") as f:
                             return f.read()
                     except Exception as e:
-                        self.module.fail_json(
-                            msg=f"Failed to read config file {config_path}: {to_native(e)}"
-                        )
+                        self.module.fail_json(msg=f"Failed to read config file {config_path}: {to_native(e)}")
         else:
             config_path = self._get_config_path(self.params["enabled"])
             if os.path.exists(config_path):
@@ -614,9 +590,7 @@ class LogrotateConfig:
                     with open(config_path, "r") as f:
                         return f.read()
                 except Exception as e:
-                    self.module.fail_json(
-                        msg=f"Failed to read config file {config_path}: {to_native(e)}"
-                    )
+                    self.module.fail_json(msg=f"Failed to read config file {config_path}: {to_native(e)}")
 
         return None
 
@@ -625,20 +599,31 @@ class LogrotateConfig:
         if not self.params.get("paths"):
             existing_content = self._read_existing_config(any_state=True)
             if existing_content:
-                lines = existing_content.strip().split('\n')
+                lines = existing_content.strip().split("\n")
                 paths = []
                 for line in lines:
                     line = line.strip()
-                    if line and not line.startswith('#') and not line.startswith('{') and not line.startswith('}') and '/' in line:
-                        if not any(keyword in line for keyword in [' ', '\t', 'daily', 'weekly', 'monthly', 'yearly', 'rotate', 'compress']):
+                    if (
+                        line
+                        and not line.startswith("#")
+                        and not line.startswith("{")
+                        and not line.startswith("}")
+                        and "/" in line
+                    ):
+                        if not any(
+                            keyword in line
+                            for keyword in [" ", "\t", "daily", "weekly", "monthly", "yearly", "rotate", "compress"]
+                        ):
                             paths.append(line)
 
                 if paths:
-                    self.params['paths'] = paths
+                    self.params["paths"] = paths
                 else:
-                    self.params['paths'] = []
+                    self.params["paths"] = []
             else:
-                self.module.fail_json(msg="Cannot generate configuration: no paths specified and no existing configuration found")
+                self.module.fail_json(
+                    msg="Cannot generate configuration: no paths specified and no existing configuration found"
+                )
 
         lines = []
 
@@ -795,15 +780,9 @@ class LogrotateConfig:
             os.makedirs(backup_dir, exist_ok=True)
 
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_file = os.path.join(
-                backup_dir, f"{self.config_name}.backup.{timestamp}"
-            )
+            backup_file = os.path.join(backup_dir, f"{self.config_name}.backup.{timestamp}")
 
-            self.module.atomic_move(
-                config_path,
-                backup_file,
-                unsafe_writes=False
-            )
+            self.module.atomic_move(config_path, backup_file, unsafe_writes=False)
             self.result["backup_file"] = backup_file
             return backup_file
 
@@ -830,9 +809,7 @@ class LogrotateConfig:
         current_enabled = self.result.get("enabled_state", True)
 
         only_changing_enabled = (
-            existing_content is not None and
-            not self.params.get("paths") and
-            self.params["enabled"] != current_enabled
+            existing_content is not None and not self.params.get("paths") and self.params["enabled"] != current_enabled
         )
 
         if only_changing_enabled:
@@ -893,9 +870,7 @@ class LogrotateConfig:
                     test_cmd = ["logrotate", "-d", str(self.result["config_file"])]
                     rc, stdout, stderr = self.module.run_command(test_cmd)
                     if rc != 0:
-                        self.module.warn(
-                            f"logrotate configuration test failed: {stderr}"
-                        )
+                        self.module.warn(f"logrotate configuration test failed: {stderr}")
 
         self.result["enabled_state"] = self.params["enabled"]
         return self.result
